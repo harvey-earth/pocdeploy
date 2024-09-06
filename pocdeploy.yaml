@@ -8,6 +8,8 @@ frontend:
   dockerfile: './build/Dockerfile.frontend'
   image: 'django-poc'
   version: '0.0.1'
+  size:
+    min: 3
 aws:
   region: 'us-west-2'
   instance_type: 't4g.small'
