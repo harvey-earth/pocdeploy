@@ -1,0 +1,16 @@
+frontend:
+  patch_dir: './build/patches'
+  path: './third_party/django-polls/'
+  admin:
+    username: 'admin'
+    email: 'admin@example.com'
+    password: 'PASSWORD'
+  dockerfile: './build/Dockerfile.frontend'
+  image: 'django-poc'
+  version: '0.0.1'
+aws:
+  region: 'us-west-2'
+  instance_type: 't4g.small'
+  secret_key_id: ''
+  secret_access_key: ''
+

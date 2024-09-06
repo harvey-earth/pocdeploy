@@ -1,0 +1,7 @@
+# Requirements for Django Polls app
+asgiref==3.8.1
+django==5.1
+psycopg2-binary==2.9.9
+sqlparse==0.5.1
+typing-extensions==4.12.2
+whitenoise==6.7.0

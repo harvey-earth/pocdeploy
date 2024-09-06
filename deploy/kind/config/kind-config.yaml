@@ -1,0 +1,19 @@
+# three node cluster
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+name: test
+nodes:
+- role: control-plane
+- role: worker
+  kubeadmConfigPatches:
+  - |
+    kind: InitConfiguration
+    nodeRegistration:
+      kubeletExtraArgs:
+        node-labels: "ingress-ready=true"
+  extraPortMappings:
+  - containerPort: 30880
+    hostPort: 80
+    protocol: TCP
+- role: worker
+- role: worker

@@ -1,0 +1,6 @@
+# Ignore terraform modules, providers, and lock file
+deploy/eks/.terraform
+
+.terraform.lock.hcl
+.terraform.tfstate*
+terraform.tfstate*
