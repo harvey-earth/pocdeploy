@@ -1,6 +1,3 @@
-/*
-Copyright © 2024 Jamie Harvey <jamie@harvey.earth>
-*/
 package cmd
 
 import (
@@ -23,7 +20,10 @@ This will delete resources using Terraform, and it will not be graceful.`,
 		fmt.Println("delete called")
 
 		if viper.GetString("type") == "kind" {
-			c.DeleteKindCluster("test")
+			err := c.DeleteKindCluster("test")
+			if err != nil {
+				c.Error("Error deleting Kind cluster named 'test'", err)
+			}
 		}
 	},
 }

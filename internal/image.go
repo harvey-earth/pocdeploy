@@ -13,7 +13,7 @@ import (
 )
 
 // BuildImage builds a docker image using the set variables from pocdeploy.yaml and returns a name and version of the built image
-func BuildImage() (name string, vers string) {
+func BuildImage() (name string, vers string, err error) {
 	fmt.Println("Building docker image")
 
 	// Set variables
@@ -26,24 +26,23 @@ func BuildImage() (name string, vers string) {
 	cmd := exec.Command("docker", "build", path, "-t", imgStr, "-f", dockerfile)
 
 	// Patch using build/patches
-	err := cmdApplyPatches(path, patchDir)
+	err = cmdApplyPatches(path, patchDir)
 	if err != nil {
-		panic(err)
+		return "", "", err
 	}
 
 	// Copy requirements.txt if none exists
 	err = copyRequirements(path)
 	if err != nil {
-		panic(err)
+		return "", "", err
 	}
 
 	// Build image
 	if err := cmd.Run(); err != nil {
-		fmt.Printf("Problem building image: %s\n", err)
-		os.Exit(1)
+		return "", "", err
 	}
 	fmt.Println("Docker image " + imgStr + " built")
-	return image, vers
+	return image, vers, nil
 }
 
 func cmdApplyPatches(repo string, patchDir string) error {

@@ -24,20 +24,36 @@ import (
 )
 
 // ConfigureFrontend creates a deployment, service, and ingress for the frontend built container
-func ConfigureFrontend() {
+func ConfigureFrontend() error {
 
-	clientset := kubernetesDefaultClient()
-
-	frontendDeployment(clientset)
-	frontendService(clientset)
-	if viper.GetString("type") == "kind" {
-		applyKindNginxIngress()
+	clientset, err := kubernetesDefaultClient()
+	if err != nil {
+		return err
 	}
-	frontendIngress(clientset)
+	err = frontendDeployment(clientset)
+	if err != nil {
+		return err
+	}
+	err = frontendService(clientset)
+	if err != nil {
+		return err
+	}
+	if viper.GetString("type") == "kind" {
+		err = applyKindNginxIngress()
+		if err != nil {
+			return err
+		}
+	}
+	err = frontendIngress(clientset)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // frontendDeployment creates the deployment
-func frontendDeployment(clientset *kubernetes.Clientset) {
+func frontendDeployment(clientset *kubernetes.Clientset) error {
 	fmt.Println("Creating frontend deployment")
 
 	imgStr := viper.GetString("frontend.image") + ":" + viper.GetString("frontend.version")
@@ -155,17 +171,18 @@ func frontendDeployment(clientset *kubernetes.Clientset) {
 			fmt.Printf("Retrying frontend deployment %d of 15\n", i)
 			time.Sleep(time.Duration(i*2) * time.Second)
 			if i >= MaxRetries {
-				panic(err)
+				return err
 			}
 		} else {
 			break
 		}
 	}
 	fmt.Println("Frontend deployment configured")
+	return nil
 }
 
 // frontendService creates the frontend-service
-func frontendService(clientset *kubernetes.Clientset) {
+func frontendService(clientset *kubernetes.Clientset) error {
 	fmt.Println("Configuring frontend service")
 
 	service := &corev1.Service{
@@ -198,17 +215,18 @@ func frontendService(clientset *kubernetes.Clientset) {
 			fmt.Printf("Retrying frontend service %d of 15\n", i)
 			time.Sleep(time.Duration(i*2) * time.Second)
 			if i >= MaxRetries {
-				panic(err)
+			return err
 			}
 		} else {
 			break
 		}
 	}
 	fmt.Println("Frontend service configured")
+	return nil
 }
 
 // Creates the frontend ingress
-func frontendIngress(clientset *kubernetes.Clientset) {
+func frontendIngress(clientset *kubernetes.Clientset) error {
 	fmt.Println("Configuring frontend ingress")
 
 	pathPtr := networkingv1.PathTypePrefix
@@ -274,32 +292,33 @@ func frontendIngress(clientset *kubernetes.Clientset) {
 			fmt.Printf("Retrying frontend ingress %d of 15\n", i)
 			time.Sleep(time.Duration(i*2) * time.Second)
 			if i >= MaxRetries {
-				panic(err)
+				return err
 			}
 		} else {
 			break
 		}
 	}
 	fmt.Println("Frontend Ingress configured")
+	return nil
 }
 
 // This installs nginx-ingress for Kind
-func applyKindNginxIngress() {
+func applyKindNginxIngress() error {
 	ingressContent, err := d.DeployFiles.ReadFile("kind/k8s/nginx-ingress.yaml")
 	if err != nil {
-		panic(err)
+		return err
 	}
 	tempfile, err := os.CreateTemp("", "nginx-ingress-*.yaml")
 	if err != nil {
-		panic(err)
+		return err
 	}
 	defer os.Remove(tempfile.Name())
 
 	if _, err := tempfile.Write(ingressContent); err != nil {
-		panic(err)
+		return err
 	}
 	if err = tempfile.Close(); err != nil {
-		panic(err)
+		return err
 	}
 	cfgName := tempfile.Name()
 
@@ -307,7 +326,7 @@ func applyKindNginxIngress() {
 		cmd := exec.Command("kubectl", "apply", "-f", cfgName)
 		if err := cmd.Run(); err != nil {
 			if i >= MaxRetries {
-				panic(err)
+				return err
 			} else {
 				time.Sleep(time.Duration(i*2) * time.Second)
 				fmt.Printf("Retrying time %d of 5\n", i)
@@ -317,14 +336,21 @@ func applyKindNginxIngress() {
 		}
 	}
 	fmt.Println("Kind nginx ingress deployed")
+	return nil
 }
 
 // CreateSecretKeySecret creates a secret key for the Django application
-func CreateSecretKeySecret() {
+func CreateSecretKeySecret() error {
 	randomString, err := generateSecretKey()
+	if err != nil {
+		return err
+	}
 	encodedString := base64.StdEncoding.EncodeToString([]byte(randomString))
 
-	clientset := kubernetesDefaultClient()
+	clientset, err := kubernetesDefaultClient()
+	if err != nil {
+		return err
+	}
 
 	secret := &v1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
@@ -339,8 +365,9 @@ func CreateSecretKeySecret() {
 
 	_, err = clientset.CoreV1().Secrets("app").Create(context.Background(), secret, metav1.CreateOptions{})
 	if err != nil {
-		panic(err)
+		return err
 	}
+	return nil
 }
 
 // generateSecretKey generates a 50 character random string

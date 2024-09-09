@@ -19,11 +19,14 @@ import (
 )
 
 // ConfigureBackend sets up CloudNative PG
-func ConfigureBackend() {
+func ConfigureBackend() error {
 	fmt.Println("Configuring CloudNative PG Cluster")
 	namespace := "app"
 
-	clientset := kubernetesDynamicClient()
+	clientset, err := kubernetesDynamicClient()
+	if err != nil {
+		return err
+	}
 
 	postgresGVR := schema.GroupVersionResource{
 		Group:    "postgresql.cnpg.io",
@@ -54,23 +57,27 @@ func ConfigureBackend() {
 			fmt.Printf("Retrying backend configuration %d of 15\n", i)
 			time.Sleep(time.Duration(i*2) * time.Second)
 			if i >= MaxRetries {
-				panic(err)
+				return err
 			}
 		} else {
 			break
 		}
 	}
 	fmt.Println("CloudNative PG Cluster configured")
+	return nil
 }
 
 // InitBackend creates a job in the created frontend container to run migrations
-func InitBackend() {
+func InitBackend() error {
 	fmt.Println("Starting backend migrations job")
 
 	imgStr := viper.GetString("frontend.image") + ":" + viper.GetString("frontend.version")
 	var backoffLimit int32 = 10
 
-	clientset := kubernetesDefaultClient()
+	clientset, err := kubernetesDefaultClient()
+	if err != nil {
+		return err
+	}
 
 	job := &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
@@ -153,39 +160,41 @@ func InitBackend() {
 		},
 	}
 
-	_, err := clientset.BatchV1().Jobs("app").Create(context.Background(), job, metav1.CreateOptions{})
+	_, err = clientset.BatchV1().Jobs("app").Create(context.Background(), job, metav1.CreateOptions{})
 	if err != nil {
-		panic(err)
+		return err
 	}
 	fmt.Println("Backend migration job started")
+	return nil
 }
 
 // InstallBackend installs the CNPG operator
-func InstallBackend() {
+func InstallBackend() error {
 	fmt.Println("Installing CNPG operator")
 
 	// Use embedded cnpg-1.24.0.yaml file to pass to kubectl apply
 	cnpgContent, err := d.DeployFiles.ReadFile("common/server/cnpg-1.24.0.yaml")
 	if err != nil {
-		panic(err)
+		return err
 	}
 	tempfile, err := os.CreateTemp("", "cnpg-1.24.0-*.yaml")
 	if err != nil {
-		panic(err)
+		return err
 	}
 	defer os.Remove(tempfile.Name())
 
 	if _, err := tempfile.Write(cnpgContent); err != nil {
-		panic(err)
+		return err
 	}
 	if err = tempfile.Close(); err != nil {
-		panic(err)
+		return err
 	}
 	cfgName := tempfile.Name()
 
 	cmd := exec.Command("kubectl", "apply", "--server-side", "-f", cfgName)
 	if err := cmd.Run(); err != nil {
-		panic(err)
+		return err
 	}
 	fmt.Println("CNPG Deployed server side")
+	return nil
 }

@@ -11,14 +11,17 @@ import (
 )
 
 // CreateAdminUser creates a job in a Django container to create an admin user using the variables from pocdeploy.yaml
-func CreateAdminUser() {
+func CreateAdminUser() error {
 	fmt.Println("Creating admin user creation job")
 
 	createStr := "from django.contrib.auth import get_user_model;User = get_user_model();User.objects.create_superuser('" + viper.GetString("frontend.admin.username") + "', '" + viper.GetString("frontend.admin.email") + "', '" + viper.GetString("frontend.admin.password") + "');"
 	var backoffLimit int32 = 10
 	imgStr := viper.GetString("frontend.image") + ":" + viper.GetString("frontend.version")
 
-	clientset := kubernetesDefaultClient()
+	clientset, err := kubernetesDefaultClient()
+	if err != nil {
+		return err
+	}
 
 	job := &v1.Job{
 		ObjectMeta: metav1.ObjectMeta{
@@ -96,9 +99,10 @@ func CreateAdminUser() {
 	}
 
 	jobClient := clientset.BatchV1().Jobs("app")
-	_, err := jobClient.Create(context.Background(), job, metav1.CreateOptions{})
+	_, err = jobClient.Create(context.Background(), job, metav1.CreateOptions{})
 	if err != nil {
-		panic(err)
+		return err
 	}
 	fmt.Println("Admin user creation job started")
+	return nil
 }

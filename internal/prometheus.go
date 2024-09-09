@@ -13,16 +13,29 @@ import (
 )
 
 // ConfigureMonitoring creates all necessary components for prometheus monitoring
-func ConfigureMonitoring() {
-	clientset := kubernetesDefaultClient()
+func ConfigureMonitoring() error {
+	clientset, err := kubernetesDefaultClient()
+	if err != nil {
+		return err
+	}
 
-	prometheusConfigMap(clientset)
-	prometheusDeployment(clientset)
-	prometheusService(clientset)
+	err = prometheusConfigMap(clientset)
+	if err != nil {
+		return err
+	}
+	err = prometheusDeployment(clientset)
+	if err != nil {
+		return err
+	}
+	err = prometheusService(clientset)
+	if err != nil {
+		return err
+	}
 
+	return nil
 }
 
-func prometheusConfigMap(clientset *kubernetes.Clientset) {
+func prometheusConfigMap(clientset *kubernetes.Clientset) error {
 	cfgMap := &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "prometheus-conf",
@@ -42,11 +55,12 @@ scrape_configs:
 
 	_, err := clientset.CoreV1().ConfigMaps("monitoring").Create(context.Background(), cfgMap, metav1.CreateOptions{})
 	if err != nil {
-		panic(err)
+		return err
 	}
+	return nil
 }
 
-func prometheusDeployment(clientset *kubernetes.Clientset) {
+func prometheusDeployment(clientset *kubernetes.Clientset) error {
 	fmt.Println("Configuring prometheus deployment")
 
 	reps := int32(1)
@@ -110,16 +124,17 @@ func prometheusDeployment(clientset *kubernetes.Clientset) {
 			fmt.Printf("Retrying prometheus deployment %d of 5\n", i+1)
 			time.Sleep(time.Duration(i*2) * time.Second)
 			if i >= MaxRetries {
-				panic(err)
+				return err
 			}
 		} else {
 			break
 		}
 	}
 	fmt.Println("Prometheus Deployment configured")
+	return nil
 }
 
-func prometheusService(clientset *kubernetes.Clientset) {
+func prometheusService(clientset *kubernetes.Clientset) error {
 	fmt.Println("Configuring prometheus service")
 
 	service := &corev1.Service{
@@ -143,7 +158,8 @@ func prometheusService(clientset *kubernetes.Clientset) {
 
 	_, err := clientset.CoreV1().Services("monitoring").Create(context.Background(), service, metav1.CreateOptions{})
 	if err != nil {
-		panic(err)
+		return err
 	}
 	fmt.Println("Prometheus Service configured")
+	return nil
 }

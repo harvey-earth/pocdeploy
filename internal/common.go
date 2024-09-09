@@ -13,29 +13,29 @@ import (
 const MaxRetries = 15
 
 // Creates a default kubernetes client
-func kubernetesDefaultClient() (clientset *kubernetes.Clientset) {
+func kubernetesDefaultClient() (clientset *kubernetes.Clientset, err error) {
 	kubeconf := filepath.Join(os.Getenv("HOME"), ".kube", "config")
 	config, err := clientcmd.BuildConfigFromFlags("", kubeconf)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 	clientset, err = kubernetes.NewForConfig(config)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 	return
 }
 
 // Creates a dynamic kubernetes client
-func kubernetesDynamicClient() (clientset *dynamic.DynamicClient) {
+func kubernetesDynamicClient() (clientset *dynamic.DynamicClient, err error) {
 	kubeconf := filepath.Join(os.Getenv("HOME"), ".kube", "config")
 	config, err := clientcmd.BuildConfigFromFlags("", kubeconf)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 	clientset, err = dynamic.NewForConfig(config)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 	return
 }

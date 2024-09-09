@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	_ "embed"
 	"fmt"
 
 	"github.com/spf13/cobra"
@@ -26,34 +25,64 @@ If the type is not set, the default is a local Kind cluster.`,
 		}
 
 		// Build image using name and version from config and return them
-		imgName, imgVers := c.BuildImage()
+		imgName, imgVers, err := c.BuildImage()
+		if err != nil {
+			c.Error("Error building image", err)
+		}
 
 		// Install CloudNativePG Operator
-		c.InstallBackend()
+		err = c.InstallBackend()
+		if err != nil {
+			c.Error("Error installing backend", err)
+		}
 
 		// Load docker image
 		if viper.GetString("type") == "kind" {
-			c.LoadKindImage(imgName, imgVers)
+			err = c.LoadKindImage(imgName, imgVers)
+			if err != nil {
+				c.Error("Error loading image to Kind", err)
+			}
 		}
 
 		// Create namespaces
-		c.CreateNamespaces()
+		err = c.CreateNamespaces()
+		if err != nil {
+			c.Error("Error creating namespaces", err)
+		}
 
 		// Deploy frontend with generated secret key
-		c.CreateSecretKeySecret()
-		c.ConfigureFrontend()
+		err = c.CreateSecretKeySecret()
+		if err != nil {
+			c.Error("Error creating namespaces", err)
+		}
+		err = c.ConfigureFrontend()
+		if err != nil {
+			c.Error("Error installing frontend", err)
+		}
 
 		// Configure CloudNativePG
-		c.ConfigureBackend()
+		err = c.ConfigureBackend()
+		if err != nil {
+			c.Error("Error installing backend", err)
+		}
 
 		// Run Django migrations
-		c.InitBackend()
+		err = c.InitBackend()
+		if err != nil {
+			c.Error("Error running migrations to initialize backend", err)
+		}
 
 		// Deploy prometheus
-		c.ConfigureMonitoring()
+		err = c.ConfigureMonitoring()
+		if err != nil {
+			c.Error("Error installing monitoring", err)
+		}
 
 		// Create job that creates superuser
-		c.CreateAdminUser()
+		err = c.CreateAdminUser()
+		if err != nil {
+			c.Error("Error creating superuser", err)
+		}
 	},
 }
 
