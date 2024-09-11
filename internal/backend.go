@@ -71,9 +71,24 @@ func ConfigureBackend() error {
 	return nil
 }
 
+func InitBackend(t string) error {
+	fmt.Println("Starting Backend initialization")
+	switch t {
+	case "django":
+		err := initDjangoBackend()
+		if err != nil {
+			err = fmt.Errorf("error initializing django backend: %w", err)
+			return err
+		}
+	}
+
+	fmt.Println("Backend initialized")
+	return nil
+}
+
 // InitBackend creates a job in the created frontend container to run migrations
-func InitBackend() error {
-	fmt.Println("Starting backend migrations job")
+func initDjangoBackend() error {
+	fmt.Println("Starting django backend migrations job")
 
 	imgStr := viper.GetString("frontend.image") + ":" + viper.GetString("frontend.version")
 	var backoffLimit int32 = 10

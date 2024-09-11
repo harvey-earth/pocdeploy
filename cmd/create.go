@@ -16,6 +16,7 @@ var createCmd = &cobra.Command{
 If the type is not set, the default is a local Kind cluster.`,
 	Example: `pocdeploy create -t [kind]`,
 	Run: func(cmd *cobra.Command, args []string) {
+		frontendType := "django"
 		// Create cluster
 		if viper.GetString("type") == "kind" {
 			err := internal.CreateKindCluster(viper.GetString("name"))
@@ -67,7 +68,7 @@ If the type is not set, the default is a local Kind cluster.`,
 		}
 
 		// Run Django migrations
-		if err = internal.InitBackend(); err != nil {
+		if err = internal.InitBackend(frontendType); err != nil {
 			internal.Error("Error running migrations to initialize backend", err)
 		}
 
