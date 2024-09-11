@@ -183,6 +183,7 @@ func frontendDeployment(clientset *kubernetes.Clientset) error {
 			break
 		}
 	}
+
 	fmt.Println("Frontend deployment configured")
 	return nil
 }
@@ -231,6 +232,7 @@ func frontendService(clientset *kubernetes.Clientset) error {
 			break
 		}
 	}
+
 	fmt.Println("Frontend service configured")
 	return nil
 }
@@ -308,6 +310,7 @@ func frontendIngress(clientset *kubernetes.Clientset) error {
 			break
 		}
 	}
+
 	fmt.Println("Frontend Ingress configured")
 	return nil
 }
@@ -349,6 +352,7 @@ func applyKindNginxIngress() error {
 			break
 		}
 	}
+
 	fmt.Println("Kind nginx ingress deployed")
 	return nil
 }
@@ -383,6 +387,7 @@ func CreateSecretKeySecret() error {
 		err = fmt.Errorf("error creating django secret key secret: %w", err)
 		return err
 	}
+
 	return nil
 }
 
@@ -398,5 +403,6 @@ func generateSecretKey() (string, error) {
 		}
 		result = append(result, characters[num.Int64()])
 	}
+
 	return string(result), nil
 }

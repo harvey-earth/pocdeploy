@@ -17,6 +17,5 @@ const (
 type KubernetesCluster struct {
 	Name string
 	Type KubernetesClusterType
-	Port int
 	Size []int
 }

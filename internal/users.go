@@ -108,6 +108,7 @@ func CreateAdminUser() error {
 		err = fmt.Errorf("error creating create-admin job: %w", err)
 		return err
 	}
+
 	fmt.Println("Admin user creation job started")
 	return nil
 }

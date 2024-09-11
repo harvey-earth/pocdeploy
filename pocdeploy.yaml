@@ -1,6 +1,5 @@
 name: 'test'
-port: 80
-workers: 2
+workers: 3
 frontend:
   patch_dir: './build/patches'
   path: './third_party/django-polls/'
@@ -12,7 +11,7 @@ frontend:
   image: 'django-poc'
   version: '0.0.1'
   size:
-    min: 3
+    min: 5
 aws:
   region: 'us-west-2'
   instance_type: 't4g.small'

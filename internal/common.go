@@ -13,6 +13,9 @@ import (
 // MaxRetries sets the maximum number of retries for kubernetes API calls
 const MaxRetries = 15
 
+// PrometheusVersion sets the version of the prometheus operator manifest
+const PrometheusVersion = "0.76.2"
+
 // Creates a default kubernetes client
 func kubernetesDefaultClient() (clientset *kubernetes.Clientset, err error) {
 	kubeconf := filepath.Join(os.Getenv("HOME"), ".kube", "config")
@@ -24,6 +27,7 @@ func kubernetesDefaultClient() (clientset *kubernetes.Clientset, err error) {
 	if err != nil {
 		return nil, err
 	}
+
 	return
 }
 
@@ -38,6 +42,7 @@ func kubernetesDynamicClient() (clientset *dynamic.DynamicClient, err error) {
 	if err != nil {
 		return nil, err
 	}
+
 	return
 }
 
@@ -57,5 +62,6 @@ func writeTempFile(content []byte) (tempfile *os.File, err error) {
 		err = fmt.Errorf("error closing tempfile %s: %w", tempfile.Name(), err)
 		return nil, err
 	}
+
 	return
 }

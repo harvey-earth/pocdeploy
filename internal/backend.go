@@ -66,6 +66,7 @@ func ConfigureBackend() error {
 			break
 		}
 	}
+
 	fmt.Println("CloudNative PG Cluster configured")
 	return nil
 }
@@ -169,6 +170,7 @@ func InitBackend() error {
 		err = fmt.Errorf("error creating backend-init job: %w", err)
 		return err
 	}
+
 	fmt.Println("Backend migration job started")
 	return nil
 }
@@ -194,6 +196,7 @@ func InstallBackend() error {
 		err = fmt.Errorf("error installing CNPG with kubectl: %w", err)
 		return err
 	}
+
 	fmt.Println("CNPG Deployed server side")
 	return nil
 }

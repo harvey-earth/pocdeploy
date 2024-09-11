@@ -35,10 +35,11 @@ func ConfigureMonitoring() error {
 // InstallMonitoring installs the prometheus operator
 func InstallMonitoring() error {
 	fmt.Println("Installing monitoring")
-	if err := installPrometheus(); err != nil {
+	if err := installPrometheus(PrometheusVersion); err != nil {
 		err = fmt.Errorf("error installing prometheus: %w", err)
 		return err
 	}
+
 	return nil
 }
 
@@ -46,22 +47,29 @@ func configurePrometheus(clientset *dynamic.DynamicClient) error {
 	fmt.Println("Configuring Prometheus operator")
 
 	prometheusGVR := schema.GroupVersionResource{
-		Group:   "monitoring.coreos.com",
-		Version: "v1",
-		// Resource: "podMonitor",
+		Group:    "monitoring.coreos.com",
+		Version:  "v1",
+		Resource: "prometheuses",
+	}
+
+	podGVR := schema.GroupVersionResource{
+		Group:    "monitoring.coreos.com",
+		Version:  "v1",
+		Resource: "podmonitors",
 	}
 
 	prometheus := &unstructured.Unstructured{
 		Object: map[string]any{
 			"apiVersion": "monitoring.coreos.com/v1",
-			"kind": "Prometheus",
+			"kind":       "Prometheus",
 			"metadata": map[string]string{
 				"name": "monitoring",
 			},
 			"spec": map[string]any{
+				"serviceAccountName": "prometheus",
 				"podMonitorSelector": map[string]any{
 					"matchLabels": map[string]string{
-						"app.kubernetes.io/name": "backend",
+						"app.kubernetes.io/name": "prometheus",
 					},
 				},
 				"resources": map[string]any{
@@ -69,7 +77,7 @@ func configurePrometheus(clientset *dynamic.DynamicClient) error {
 						"memory": "400Mi",
 					},
 				},
-				"enableAdminAPI": "false",
+				"enableAdminAPI": false,
 			},
 		},
 	}
@@ -87,31 +95,38 @@ func configurePrometheus(clientset *dynamic.DynamicClient) error {
 				},
 			},
 			"spec": map[string]any{
-				"monitoring": map[string]string{
-					"enablePodMonitor": "true",
-				},
 				"selector": map[string]any{
 					"matchLabels": map[string]string{
 						"app.kubernetes.io/name": "backend",
 					},
 				},
-				"podMetricsEndpoints": map[string]string{
-					"port": "metrics",
+				"podMetricsEndpoints": []map[string]any{
+					{
+						"port": "metrics",
+					},
 				},
 			},
 		},
 	}
 
 	// Install Prometheus Resource
-	if _, err := clientset.Resource(prometheusGVR).Namespace("app").Create(context.Background(), prometheus, metav1.CreateOptions{}); err != nil {
-		err = fmt.Errorf("error installing prometheus resource: %w", err)
-		return err
+	for i := 1; ; i++ {
+		if _, err := clientset.Resource(prometheusGVR).Namespace("app").Create(context.Background(), prometheus, metav1.CreateOptions{}); err != nil {
+			fmt.Printf("Retrying prometheus resource configuration %d of %d\n", i, MaxRetries)
+			time.Sleep(time.Duration(i*2) * time.Second)
+			if i >= MaxRetries {
+				err = fmt.Errorf("error installing prometheus resource: %w", err)
+				return err
+			}
+		} else {
+			break
+		}
 	}
 
 	// Install PodMonitor
-	for i := 1; ; i++ {
-		if _, err := clientset.Resource(prometheusGVR).Namespace("app").Create(context.Background(), podMonitor, metav1.CreateOptions{}); err != nil {
-			fmt.Printf("Retrying prometheus configuration %d of %d\n", i, MaxRetries)
+	for i := 15; ; i++ {
+		if _, err := clientset.Resource(podGVR).Namespace("app").Create(context.Background(), podMonitor, metav1.CreateOptions{}); err != nil {
+			fmt.Printf("Retrying prometheus podmonitor configuration %d of %d\n", i, MaxRetries)
 			time.Sleep(time.Duration(i*2) * time.Second)
 			if i >= MaxRetries {
 				err = fmt.Errorf("end of retries for prometheus configuration: %w", err)
@@ -126,10 +141,11 @@ func configurePrometheus(clientset *dynamic.DynamicClient) error {
 	return nil
 }
 
-func installPrometheus() error {
+func installPrometheus(vers string) error {
 	fmt.Println("Installing Prometheus operator")
 
-	promContent, err := d.DeployFiles.ReadFile("common/server/prometheus-operator.yaml")
+	// Write to temp file
+	promContent, err := d.DeployFiles.ReadFile("common/server/prometheus-operator-" + vers + ".yaml")
 	if err != nil {
 		return err
 	}
@@ -139,24 +155,13 @@ func installPrometheus() error {
 	}
 	defer os.Remove(tempfile.Name())
 
+	// Run install command
 	cmd := exec.Command("kubectl", "apply", "--server-side", "-f", tempfile.Name())
-
-	// for i := 1; ; i++ {
-	// 	if err := cmd.Run(); err != nil {
-	// 		fmt.Printf("Retrying prometheus operator install %d of %d\n", i, MaxRetries)
-	// 		time.Sleep(time.Duration(i*2) * time.Second)
-	// 		if i >= MaxRetries {
-	// 			err = fmt.Errorf("error running kubectl: %w", err)
-	// 			return err
-	// 		}
-	// 	} else {
-	// 		break
-	// 	}
-	// }
 	if err := cmd.Run(); err != nil {
 		err = fmt.Errorf("error running kubectl: %w", err)
 		return err
 	}
+
 	fmt.Println("Prometheus Operator installed")
 	return nil
 }

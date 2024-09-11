@@ -13,7 +13,7 @@ nodes:
         node-labels: "ingress-ready=true"
   extraPortMappings:
   - containerPort: 30880
-    hostPort: {{ .Port }} 
+    hostPort: 80
     protocol: TCP
 {{ range .Size }}
 - role: worker

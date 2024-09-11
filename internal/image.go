@@ -42,40 +42,46 @@ func BuildImage() (name string, vers string, err error) {
 		err = fmt.Errorf("error building docker iamge: %w", err)
 		return "", "", err
 	}
+
 	fmt.Println("Docker image " + imgStr + " built")
 	return image, vers, nil
 }
 
 func cmdApplyPatches(repo string, patchDir string) error {
-	// Get absolute paths
-	patchPath, err := filepath.Abs(patchDir)
-	if err != nil {
-		err = fmt.Errorf("error getting absolute path of patch directory: %w", err)
-		return err
-	}
-	repoPath, err := filepath.Abs(repo)
-	if err != nil {
-		err = fmt.Errorf("error getting absolute path of frontend path: %w", err)
-		return err
-	}
-	patchFiles, err := os.ReadDir(patchPath)
+	// Check if patchDir is empty
+	// patchPath, err := filepath.Abs(patchDir)
+	// if err != nil {
+	// 	err = fmt.Errorf("error getting absolute path of patch directory: %w", err)
+	// 	return err
+	// }
+	patchFiles, err := os.ReadDir(patchDir)
 	if err != nil {
 		err = fmt.Errorf("error reading patch files: %w", err)
 		return err
 	}
+	if len(patchFiles) == 0 {
+		fmt.Printf("%s empty directory, skipping...\n", patchDir)
+		return nil
+	}
+	// repoPath, err := filepath.Abs(repo)
+	// if err != nil {
+	// 	err = fmt.Errorf("error getting absolute path of frontend path: %w", err)
+	// 	return err
+	// }
 
-	fmt.Printf("Applying patches from %s to %s\n", patchPath, repoPath)
+	fmt.Printf("Applying patches from %s to %s\n", patchDir, repo)
 	// Iterate through patch files
 	for _, f := range patchFiles {
-		filename := patchPath + "/" + f.Name()
+		filename := patchDir + "/" + f.Name()
 		cmd := exec.Command("git", "apply", filename)
-		cmd.Dir = repoPath
+		cmd.Dir = repo
 
 		if err := cmd.Run(); err != nil {
 			err = fmt.Errorf("error applying patch from %s: %w", filename, err)
 			return err
 		}
 	}
+
 	fmt.Println("Applied patches")
 	return nil
 }
@@ -86,6 +92,7 @@ func copyRequirements(dest string) error {
 	if _, err := os.Stat(dst); err == nil {
 		// File exists, skip copying
 		fmt.Printf("File %s already exists, skipping...\n", dst)
+		return nil
 	} else if !os.IsNotExist(err) {
 		// Some other error occurred while checking file existence
 		return err

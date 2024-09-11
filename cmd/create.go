@@ -24,6 +24,11 @@ If the type is not set, the default is a local Kind cluster.`,
 			}
 		}
 
+		// Create namespaces
+		if err := internal.CreateNamespaces(); err != nil {
+			internal.Error("Error creating namespaces", err)
+		}
+
 		// Install backend (CloudNativePG operator)
 		if err := internal.InstallBackend(); err != nil {
 			internal.Error("Error installing backend", err)
@@ -47,16 +52,11 @@ If the type is not set, the default is a local Kind cluster.`,
 			}
 		}
 
-		// Create namespaces
-		if err = internal.CreateNamespaces(); err != nil {
-			internal.Error("Error creating namespaces", err)
-		}
-
 		// Deploy frontend with generated secret key
 		if err = internal.CreateSecretKeySecret(); err != nil {
 			internal.Error("Error creating namespaces", err)
 		}
-		
+
 		if err = internal.ConfigureFrontend(); err != nil {
 			internal.Error("Error installing frontend", err)
 		}
