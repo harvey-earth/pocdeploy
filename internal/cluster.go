@@ -35,8 +35,7 @@ func CreateKindCluster(name string) error {
 		err = fmt.Errorf("error parsing kind-config template: %w", err)
 		return err
 	}
-	err = tmpl.Execute(tempfile, cluster)
-	if err != nil {
+	if err = tmpl.Execute(tempfile, cluster); err != nil {
 		err = fmt.Errorf("error executing template: %w", err)
 		return err
 	}

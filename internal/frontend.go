@@ -3,7 +3,6 @@ package internal
 import (
 	"context"
 	"crypto/rand"
-	_ "embed"
 	"encoding/base64"
 	"fmt"
 	"math/big"
@@ -30,25 +29,21 @@ func ConfigureFrontend() error {
 	if err != nil {
 		return err
 	}
-	err = frontendDeployment(clientset)
-	if err != nil {
+	if err = frontendDeployment(clientset); err != nil {
 		err = fmt.Errorf("error with frontend deployment: %w", err)
 		return err
 	}
-	err = frontendService(clientset)
-	if err != nil {
+	if err = frontendService(clientset); err != nil {
 		err = fmt.Errorf("error with frontend service: %w", err)
 		return err
 	}
 	if viper.GetString("type") == "kind" {
-		err = applyKindNginxIngress()
-		if err != nil {
+		if err = applyKindNginxIngress(); err != nil {
 			err = fmt.Errorf("error with kind nginx ingress: %w", err)
 			return err
 		}
 	}
-	err = frontendIngress(clientset)
-	if err != nil {
+	if err = frontendIngress(clientset); err != nil {
 		err = fmt.Errorf("error with frontend ingress: %w", err)
 		return err
 	}
@@ -177,8 +172,7 @@ func frontendDeployment(clientset *kubernetes.Clientset) error {
 	}
 
 	for i := 1; ; i++ {
-		_, err := clientset.AppsV1().Deployments("app").Create(context.Background(), deployment, metav1.CreateOptions{})
-		if err != nil {
+		if _, err := clientset.AppsV1().Deployments("app").Create(context.Background(), deployment, metav1.CreateOptions{}); err != nil {
 			fmt.Printf("Retrying frontend deployment %d of %d\n", i, MaxRetries)
 			time.Sleep(time.Duration(i*2) * time.Second)
 			if i >= MaxRetries {
@@ -226,8 +220,7 @@ func frontendService(clientset *kubernetes.Clientset) error {
 	}
 
 	for i := 1; ; i++ {
-		_, err := clientset.CoreV1().Services("app").Create(context.Background(), service, metav1.CreateOptions{})
-		if err != nil {
+		if _, err := clientset.CoreV1().Services("app").Create(context.Background(), service, metav1.CreateOptions{}); err != nil {
 			fmt.Printf("Retrying frontend service %d of %d\n", i, MaxRetries)
 			time.Sleep(time.Duration(i*2) * time.Second)
 			if i >= MaxRetries {
@@ -304,8 +297,7 @@ func frontendIngress(clientset *kubernetes.Clientset) error {
 	}
 
 	for i := 1; ; i++ {
-		_, err := clientset.NetworkingV1().Ingresses("app").Create(context.Background(), ingress, metav1.CreateOptions{})
-		if err != nil {
+		if _, err := clientset.NetworkingV1().Ingresses("app").Create(context.Background(), ingress, metav1.CreateOptions{}); err != nil {
 			fmt.Printf("Retrying frontend ingress %d of %d\n", i, MaxRetries)
 			time.Sleep(time.Duration(i*2) * time.Second)
 			if i >= MaxRetries {
@@ -387,8 +379,7 @@ func CreateSecretKeySecret() error {
 		Type: v1.SecretTypeOpaque,
 	}
 
-	_, err = clientset.CoreV1().Secrets("app").Create(context.Background(), secret, metav1.CreateOptions{})
-	if err != nil {
+	if _, err = clientset.CoreV1().Secrets("app").Create(context.Background(), secret, metav1.CreateOptions{}); err != nil {
 		err = fmt.Errorf("error creating django secret key secret: %w", err)
 		return err
 	}

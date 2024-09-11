@@ -23,8 +23,7 @@ func CreateNamespaces() error {
 			Name: "app",
 		},
 	}
-	_, err = clientset.CoreV1().Namespaces().Create(context.Background(), appNS, metav1.CreateOptions{})
-	if err != nil {
+	if _, err = clientset.CoreV1().Namespaces().Create(context.Background(), appNS, metav1.CreateOptions{}); err != nil {
 		err = fmt.Errorf("error creating namespace %s: %w", string(appNS.ObjectMeta.Name), err)
 		return err
 	}

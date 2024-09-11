@@ -55,8 +55,7 @@ func ConfigureBackend() error {
 	}
 
 	for i := 1; ; i++ {
-		_, err := clientset.Resource(postgresGVR).Namespace(namespace).Create(context.Background(), postgresCluster, metav1.CreateOptions{})
-		if err != nil {
+		if _, err := clientset.Resource(postgresGVR).Namespace(namespace).Create(context.Background(), postgresCluster, metav1.CreateOptions{}); err != nil {
 			fmt.Printf("Retrying backend configuration %d of %d\n", i, MaxRetries)
 			time.Sleep(time.Duration(i*2) * time.Second)
 			if i >= MaxRetries {
@@ -166,8 +165,7 @@ func InitBackend() error {
 		},
 	}
 
-	_, err = clientset.BatchV1().Jobs("app").Create(context.Background(), job, metav1.CreateOptions{})
-	if err != nil {
+	if _, err = clientset.BatchV1().Jobs("app").Create(context.Background(), job, metav1.CreateOptions{}); err != nil {
 		err = fmt.Errorf("error creating backend-init job: %w", err)
 		return err
 	}

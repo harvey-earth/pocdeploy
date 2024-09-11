@@ -26,15 +26,13 @@ func BuildImage() (name string, vers string, err error) {
 	cmd := exec.Command("docker", "build", path, "-t", imgStr, "-f", dockerfile)
 
 	// Patch using build/patches
-	err = cmdApplyPatches(path, patchDir)
-	if err != nil {
+	if err = cmdApplyPatches(path, patchDir); err != nil {
 		err = fmt.Errorf("error applying patches: %w", err)
 		return "", "", err
 	}
 
 	// Copy requirements.txt if none exists
-	err = copyRequirements(path)
-	if err != nil {
+	if err = copyRequirements(path); err != nil {
 		err = fmt.Errorf("error copying requirements.txt: %w", err)
 		return "", "", err
 	}
