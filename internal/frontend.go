@@ -32,20 +32,24 @@ func ConfigureFrontend() error {
 	}
 	err = frontendDeployment(clientset)
 	if err != nil {
+		err = fmt.Errorf("error with frontend deployment: %w", err)
 		return err
 	}
 	err = frontendService(clientset)
 	if err != nil {
+		err = fmt.Errorf("error with frontend service: %w", err)
 		return err
 	}
 	if viper.GetString("type") == "kind" {
 		err = applyKindNginxIngress()
 		if err != nil {
+			err = fmt.Errorf("error with kind nginx ingress: %w", err)
 			return err
 		}
 	}
 	err = frontendIngress(clientset)
 	if err != nil {
+		err = fmt.Errorf("error with frontend ingress: %w", err)
 		return err
 	}
 
@@ -55,26 +59,33 @@ func ConfigureFrontend() error {
 // frontendDeployment creates the deployment
 func frontendDeployment(clientset *kubernetes.Clientset) error {
 	fmt.Println("Creating frontend deployment")
+	name := viper.GetString("frontend.image")
+	vers := viper.GetString("frontend.version")
 
-	imgStr := viper.GetString("frontend.image") + ":" + viper.GetString("frontend.version")
+	imgStr := name + ":" + vers
 	reps := viper.GetInt32("frontend.size.min")
 
 	deployment := &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "frontend-deployment",
 			Namespace: "app",
+			Labels: map[string]string{
+				"app.kubernetes.io/component": "controller",
+				"app.kubernetes.io/name": name,
+				"app.kubernetes.io/version": vers,
+			},
 		},
 		Spec: appsv1.DeploymentSpec{
 			Replicas: &reps,
 			Selector: &metav1.LabelSelector{
 				MatchLabels: map[string]string{
-					"app": "frontend",
+					"app.kubernetes.io/name": name,
 				},
 			},
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels: map[string]string{
-						"app": "frontend",
+					"app.kubernetes.io/name": name,
 					},
 				},
 				Spec: corev1.PodSpec{
@@ -168,9 +179,10 @@ func frontendDeployment(clientset *kubernetes.Clientset) error {
 	for i := 1; ; i++ {
 		_, err := clientset.AppsV1().Deployments("app").Create(context.Background(), deployment, metav1.CreateOptions{})
 		if err != nil {
-			fmt.Printf("Retrying frontend deployment %d of 15\n", i)
+			fmt.Printf("Retrying frontend deployment %d of %d\n", i, MaxRetries)
 			time.Sleep(time.Duration(i*2) * time.Second)
 			if i >= MaxRetries {
+				err = fmt.Errorf("end of retries for frontend deployment: %w", err)
 				return err
 			}
 		} else {
@@ -184,18 +196,22 @@ func frontendDeployment(clientset *kubernetes.Clientset) error {
 // frontendService creates the frontend-service
 func frontendService(clientset *kubernetes.Clientset) error {
 	fmt.Println("Configuring frontend service")
+	name := viper.GetString("frontend.name")
+	vers := viper.GetString("frontend.version")
 
 	service := &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "frontend-service",
 			Namespace: "app",
 			Labels: map[string]string{
-				"app": "frontend",
+				"app.kubernetes.io/component": "service",
+				"app.kubernetes.io/name": name,
+				"app.kubernetes.io/version": vers,
 			},
 		},
 		Spec: corev1.ServiceSpec{
 			Selector: map[string]string{
-				"app": "frontend",
+				"app.kubernetes.io/name": name,
 			},
 			Ports: []corev1.ServicePort{
 				{
@@ -212,9 +228,10 @@ func frontendService(clientset *kubernetes.Clientset) error {
 	for i := 1; ; i++ {
 		_, err := clientset.CoreV1().Services("app").Create(context.Background(), service, metav1.CreateOptions{})
 		if err != nil {
-			fmt.Printf("Retrying frontend service %d of 15\n", i)
+			fmt.Printf("Retrying frontend service %d of %d\n", i, MaxRetries)
 			time.Sleep(time.Duration(i*2) * time.Second)
 			if i >= MaxRetries {
+				err = fmt.Errorf("end of retries for frontend service: %w", err)
 			return err
 			}
 		} else {
@@ -236,10 +253,10 @@ func frontendIngress(clientset *kubernetes.Clientset) error {
 			Name:      "frontend-ingress",
 			Namespace: "app",
 			Labels: map[string]string{
+				"app.kubernetes.io/component": "ingress",
 				"app.kubernetes.io/name": "ingress-nginx",
 			},
 			Annotations: map[string]string{
-				// "nginx.ingress.kubernetes.io/rewrite-target": "/$1",
 				"nginx.ingress.kubernetes.io/configuration-snippet": `
 				location /static/ {
 					root /staticfiles;
@@ -289,9 +306,10 @@ func frontendIngress(clientset *kubernetes.Clientset) error {
 	for i := 1; ; i++ {
 		_, err := clientset.NetworkingV1().Ingresses("app").Create(context.Background(), ingress, metav1.CreateOptions{})
 		if err != nil {
-			fmt.Printf("Retrying frontend ingress %d of 15\n", i)
+			fmt.Printf("Retrying frontend ingress %d of %d\n", i, MaxRetries)
 			time.Sleep(time.Duration(i*2) * time.Second)
 			if i >= MaxRetries {
+				err = fmt.Errorf("end of retries for frontend ingress: %w", err)
 				return err
 			}
 		} else {
@@ -310,14 +328,17 @@ func applyKindNginxIngress() error {
 	}
 	tempfile, err := os.CreateTemp("", "nginx-ingress-*.yaml")
 	if err != nil {
+		err = fmt.Errorf("error creating tempfile %s: %w", tempfile.Name(), err)
 		return err
 	}
 	defer os.Remove(tempfile.Name())
 
 	if _, err := tempfile.Write(ingressContent); err != nil {
+		err = fmt.Errorf("error writing to tempfile %s: %w", tempfile.Name(), err)
 		return err
 	}
 	if err = tempfile.Close(); err != nil {
+		err = fmt.Errorf("error closing tempfile %s: %w", tempfile.Name(), err)
 		return err
 	}
 	cfgName := tempfile.Name()
@@ -326,10 +347,11 @@ func applyKindNginxIngress() error {
 		cmd := exec.Command("kubectl", "apply", "-f", cfgName)
 		if err := cmd.Run(); err != nil {
 			if i >= MaxRetries {
+				err = fmt.Errorf("end of retries to apply kind nginx ingress: %w", err)
 				return err
 			} else {
 				time.Sleep(time.Duration(i*2) * time.Second)
-				fmt.Printf("Retrying time %d of 5\n", i)
+				fmt.Printf("Retrying time %d of %d\n", i, MaxRetries)
 			}
 		} else {
 			break
@@ -343,12 +365,14 @@ func applyKindNginxIngress() error {
 func CreateSecretKeySecret() error {
 	randomString, err := generateSecretKey()
 	if err != nil {
+		err = fmt.Errorf("error generating secret key: %w", err)
 		return err
 	}
 	encodedString := base64.StdEncoding.EncodeToString([]byte(randomString))
 
 	clientset, err := kubernetesDefaultClient()
 	if err != nil {
+		err = fmt.Errorf("error creating client for secret django-secret-key: %w", err)
 		return err
 	}
 
@@ -365,6 +389,7 @@ func CreateSecretKeySecret() error {
 
 	_, err = clientset.CoreV1().Secrets("app").Create(context.Background(), secret, metav1.CreateOptions{})
 	if err != nil {
+		err = fmt.Errorf("error creating django secret key secret: %w", err)
 		return err
 	}
 	return nil

@@ -28,17 +28,20 @@ func BuildImage() (name string, vers string, err error) {
 	// Patch using build/patches
 	err = cmdApplyPatches(path, patchDir)
 	if err != nil {
+		err = fmt.Errorf("error applying patches: %w", err)
 		return "", "", err
 	}
 
 	// Copy requirements.txt if none exists
 	err = copyRequirements(path)
 	if err != nil {
+		err = fmt.Errorf("error copying requirements.txt: %w", err)
 		return "", "", err
 	}
 
 	// Build image
 	if err := cmd.Run(); err != nil {
+		err = fmt.Errorf("error building docker iamge: %w", err)
 		return "", "", err
 	}
 	fmt.Println("Docker image " + imgStr + " built")
@@ -49,14 +52,17 @@ func cmdApplyPatches(repo string, patchDir string) error {
 	// Get absolute paths
 	patchPath, err := filepath.Abs(patchDir)
 	if err != nil {
+		err = fmt.Errorf("error getting absolute path of patch directory: %w", err)
 		return err
 	}
 	repoPath, err := filepath.Abs(repo)
 	if err != nil {
+		err = fmt.Errorf("error getting absolute path of frontend path: %w", err)
 		return err
 	}
 	patchFiles, err := os.ReadDir(patchPath)
 	if err != nil {
+		err = fmt.Errorf("error reading patch files: %w", err)
 		return err
 	}
 
@@ -68,6 +74,7 @@ func cmdApplyPatches(repo string, patchDir string) error {
 		cmd.Dir = repoPath
 
 		if err := cmd.Run(); err != nil {
+			err = fmt.Errorf("error applying patch from %s: %w", filename, err)
 			return err
 		}
 	}
@@ -81,7 +88,6 @@ func copyRequirements(dest string) error {
 	if _, err := os.Stat(dst); err == nil {
 		// File exists, skip copying
 		fmt.Printf("File %s already exists, skipping...\n", dst)
-		return err
 	} else if !os.IsNotExist(err) {
 		// Some other error occurred while checking file existence
 		return err
@@ -91,6 +97,7 @@ func copyRequirements(dest string) error {
 	// Open the source file
 	srcFile, err := d.DeployFiles.Open("frontend/frontend-requirements.txt")
 	if err != nil {
+		err = fmt.Errorf("error opening embeded frontend-requirements.txt file: %w", err)
 		return err
 	}
 	defer srcFile.Close()
@@ -98,12 +105,14 @@ func copyRequirements(dest string) error {
 	// Create the destination file
 	dstFile, err := os.Create(dst)
 	if err != nil {
+		err = fmt.Errorf("error creating requirements.txt file: %w", err)
 		return err
 	}
 	defer dstFile.Close()
 
 	// Copy the file contents from source to destination
 	if _, err := io.Copy(dstFile, srcFile); err != nil {
+		err = fmt.Errorf("error copying requirements.txt file: %w", err)
 		return err
 	}
 

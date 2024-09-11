@@ -27,6 +27,10 @@ func CreateAdminUser() error {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "create-admin",
 			Namespace: "app",
+			Labels: map[string]string{
+				"app.kubernetes.io/component": "job",
+				"app.kubernetes.io/name": "create-admin",
+			},
 		},
 		Spec: v1.JobSpec{
 			BackoffLimit: &backoffLimit,
@@ -101,6 +105,7 @@ func CreateAdminUser() error {
 	jobClient := clientset.BatchV1().Jobs("app")
 	_, err = jobClient.Create(context.Background(), job, metav1.CreateOptions{})
 	if err != nil {
+		err = fmt.Errorf("error creating create-admin job: %w", err)
 		return err
 	}
 	fmt.Println("Admin user creation job started")

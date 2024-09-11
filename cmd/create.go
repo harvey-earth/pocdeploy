@@ -21,7 +21,10 @@ If the type is not set, the default is a local Kind cluster.`,
 
 		// Create cluster
 		if viper.GetString("type") == "kind" {
-			c.CreateKindCluster()
+			err := c.CreateKindCluster(viper.GetString("name"))
+			if err != nil {
+				c.Error("Error creating Kind cluster", err)
+			}
 		}
 
 		// Build image using name and version from config and return them

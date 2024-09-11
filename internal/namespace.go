@@ -14,6 +14,7 @@ func CreateNamespaces() error {
 
 	clientset, err := kubernetesDefaultClient()
 	if err != nil {
+		err = fmt.Errorf("error creating client for namespaces: %w", err)
 		return err
 	}
 
@@ -24,6 +25,7 @@ func CreateNamespaces() error {
 	}
 	_, err = clientset.CoreV1().Namespaces().Create(context.Background(), appNS, metav1.CreateOptions{})
 	if err != nil {
+		err = fmt.Errorf("error creating namespace %s: %w", string(appNS.ObjectMeta.Name), err)
 		return err
 	}
 
@@ -34,6 +36,7 @@ func CreateNamespaces() error {
 	}
 	_, err = clientset.CoreV1().Namespaces().Create(context.Background(), monNS, metav1.CreateOptions{})
 	if err != nil {
+		err = fmt.Errorf("error creating namespace %s: %w", string(monNS.ObjectMeta.Name), err)
 		return err
 	}
 	fmt.Println("Namespaces created")

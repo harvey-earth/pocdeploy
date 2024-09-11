@@ -1,3 +1,5 @@
+name: 'test'
+port: 80
 frontend:
   patch_dir: './build/patches'
   path: './third_party/django-polls/'

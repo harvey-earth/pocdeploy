@@ -13,7 +13,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	_ "k8s.io/client-go/dynamic" // kubernetesDynamicConfig used here
 
 	d "github.com/harvey-earth/pocdeploy/deploy"
 )
@@ -41,6 +40,10 @@ func ConfigureBackend() error {
 			"metadata": map[string]any{
 				"name":      "poc-backend-cluster",
 				"namespace": namespace,
+				"labels": map[string]string{
+					"app.kubernetes.io/component": "cluster",
+					"app.kubernetes.io/name": "backend",
+				},
 			},
 			"spec": map[string]any{
 				"instances": 3,
@@ -54,9 +57,10 @@ func ConfigureBackend() error {
 	for i := 1; ; i++ {
 		_, err := clientset.Resource(postgresGVR).Namespace(namespace).Create(context.Background(), postgresCluster, metav1.CreateOptions{})
 		if err != nil {
-			fmt.Printf("Retrying backend configuration %d of 15\n", i)
+			fmt.Printf("Retrying backend configuration %d of %d\n", i, MaxRetries)
 			time.Sleep(time.Duration(i*2) * time.Second)
 			if i >= MaxRetries {
+				err = fmt.Errorf("reached end of retries for backend configuration: %w", err)
 				return err
 			}
 		} else {
@@ -76,6 +80,7 @@ func InitBackend() error {
 
 	clientset, err := kubernetesDefaultClient()
 	if err != nil {
+		err = fmt.Errorf("error creating default client for init backend: %w", err)
 		return err
 	}
 
@@ -84,7 +89,8 @@ func InitBackend() error {
 			Name:      "backend-init",
 			Namespace: "app",
 			Labels: map[string]string{
-				"app": "backend-init",
+				"app.kubernetes.io/component": "job",
+				"app.kubernetes.io/name": "backend-init",
 			},
 		},
 		Spec: batchv1.JobSpec{
@@ -92,7 +98,7 @@ func InitBackend() error {
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels: map[string]string{
-						"app": "backend-init",
+						"app.kubernetes.io/name": "backend-init",
 					},
 				},
 				Spec: corev1.PodSpec{
@@ -162,6 +168,7 @@ func InitBackend() error {
 
 	_, err = clientset.BatchV1().Jobs("app").Create(context.Background(), job, metav1.CreateOptions{})
 	if err != nil {
+		err = fmt.Errorf("error creating backend-init job: %w", err)
 		return err
 	}
 	fmt.Println("Backend migration job started")

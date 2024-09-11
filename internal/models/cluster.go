@@ -18,4 +18,5 @@ type KubernetesCluster struct {
 	Name    string
 	Version string
 	Type    KubernetesClusterType
+	Port 	int
 }

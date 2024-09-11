@@ -20,7 +20,7 @@ This will delete resources using Terraform, and it will not be graceful.`,
 		fmt.Println("delete called")
 
 		if viper.GetString("type") == "kind" {
-			err := c.DeleteKindCluster("test")
+			err := c.DeleteKindCluster(viper.GetString("name"))
 			if err != nil {
 				c.Error("Error deleting Kind cluster named 'test'", err)
 			}
