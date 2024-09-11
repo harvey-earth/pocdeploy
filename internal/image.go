@@ -39,7 +39,7 @@ func BuildImage() (name string, vers string, err error) {
 
 	// Build image
 	if err := cmd.Run(); err != nil {
-		err = fmt.Errorf("error building docker iamge: %w", err)
+		err = fmt.Errorf("error building docker image: %w", err)
 		return "", "", err
 	}
 
@@ -49,12 +49,12 @@ func BuildImage() (name string, vers string, err error) {
 
 func cmdApplyPatches(repo string, patchDir string) error {
 	// Check if patchDir is empty
-	// patchPath, err := filepath.Abs(patchDir)
-	// if err != nil {
-	// 	err = fmt.Errorf("error getting absolute path of patch directory: %w", err)
-	// 	return err
-	// }
-	patchFiles, err := os.ReadDir(patchDir)
+	patchPath, err := filepath.Abs(patchDir)
+	if err != nil {
+		err = fmt.Errorf("error getting absolute path of patch directory: %w", err)
+		return err
+	}
+	patchFiles, err := os.ReadDir(patchPath)
 	if err != nil {
 		err = fmt.Errorf("error reading patch files: %w", err)
 		return err
@@ -63,18 +63,18 @@ func cmdApplyPatches(repo string, patchDir string) error {
 		fmt.Printf("%s empty directory, skipping...\n", patchDir)
 		return nil
 	}
-	// repoPath, err := filepath.Abs(repo)
-	// if err != nil {
-	// 	err = fmt.Errorf("error getting absolute path of frontend path: %w", err)
-	// 	return err
-	// }
+	repoPath, err := filepath.Abs(repo)
+	if err != nil {
+		err = fmt.Errorf("error getting absolute path of frontend path: %w", err)
+		return err
+	}
 
 	fmt.Printf("Applying patches from %s to %s\n", patchDir, repo)
 	// Iterate through patch files
 	for _, f := range patchFiles {
-		filename := patchDir + "/" + f.Name()
+		filename := patchPath + "/" + f.Name()
 		cmd := exec.Command("git", "apply", filename)
-		cmd.Dir = repo
+		cmd.Dir = repoPath
 
 		if err := cmd.Run(); err != nil {
 			err = fmt.Errorf("error applying patch from %s: %w", filename, err)

@@ -191,7 +191,7 @@ func frontendDeployment(clientset *kubernetes.Clientset) error {
 // frontendService creates the frontend-service
 func frontendService(clientset *kubernetes.Clientset) error {
 	fmt.Println("Configuring frontend service")
-	name := viper.GetString("frontend.name")
+	name := viper.GetString("frontend.image")
 	vers := viper.GetString("frontend.version")
 
 	service := &corev1.Service{
