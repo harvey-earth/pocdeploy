@@ -15,18 +15,14 @@ import (
 // CreateKindCluster runs a shell command to create a Kind cluster
 func CreateKindCluster(name string) error {
 	fmt.Println("Creating kind cluster")
+	clusterSize := make([]int, viper.GetInt("workers")-1)
 	cluster := models.KubernetesCluster{
 		Name: name,
 		Type: models.Kind,
 		Port: viper.GetInt("port"),
+		Size: clusterSize,
 	}
 
-	// Get embedded config
-	// configContent, err := d.DeployFiles.ReadFile("kind/config/kind-config.yaml")
-	// if err != nil {
-	// 	err = fmt.Errorf("error reading kind config: %w", err)
-	// 	return err
-	// }
 	tempfile, err := os.CreateTemp("", "kind-config-*.yaml")
 	if err != nil {
 		err = fmt.Errorf("error creating tempfile: %w", err)
@@ -34,26 +30,25 @@ func CreateKindCluster(name string) error {
 	}
 	defer os.Remove(tempfile.Name())
 
-	tmpl, err := template.New("kind-config.yaml").ParseFS(d.DeployFiles, "kind/config/kind-config.tmpl.yaml")
+	tmpl, err := template.New("kind-config.yaml.tmpl").ParseFS(d.DeployFiles, "kind/config/kind-config.yaml.tmpl")
 	if err != nil {
 		err = fmt.Errorf("error parsing kind-config template: %w", err)
 		return err
 	}
 	err = tmpl.Execute(tempfile, cluster)
-	// if _, err := tempfile.Write(configContent); err != nil {
-	// 	err = fmt.Errorf("error writing tempfile: %w", err)
-	// 	return err
-	// }
+	if err != nil {
+		err = fmt.Errorf("error executing template: %w", err)
+		return err
+	}
 	if err = tempfile.Close(); err != nil {
 		err = fmt.Errorf("error closing tempfile: %w", err)
 		return err
 	}
-	cfgName := tempfile.Name()
 
 	// Create cluster with config
-	cmd := exec.Command("kind", "create", "cluster", "--config", cfgName)
+	cmd := exec.Command("kind", "create", "cluster", "--config", tempfile.Name())
 	if err := cmd.Run(); err != nil {
-		err = fmt.Errorf("error creating kind cluster: %w", err)
+		err = fmt.Errorf("error creating kind cluster on command line: %w", err)
 		return err
 	}
 	fmt.Println("Cluster created")
@@ -65,7 +60,7 @@ func DeleteKindCluster(name string) error {
 	fmt.Println("Deleting kind cluster")
 	cmd := exec.Command("kind", "delete", "cluster", "--name", name)
 	if err := cmd.Run(); err != nil {
-		err = fmt.Errorf("error deleting kind cluster: %w", err)
+		err = fmt.Errorf("error deleting kind cluster %s: %w", name, err)
 		return err
 	}
 	fmt.Println("Cluster " + name + " deleted")
@@ -80,6 +75,7 @@ func LoadKindImage(name string, vers string) error {
 	cmd := exec.Command("kind", "load", "docker-image", img, "--name", "test")
 
 	if err := cmd.Run(); err != nil {
+		err = fmt.Errorf("error running kind load command: %w", err)
 		return err
 	}
 	fmt.Println("Image loaded")

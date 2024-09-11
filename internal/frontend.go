@@ -71,8 +71,8 @@ func frontendDeployment(clientset *kubernetes.Clientset) error {
 			Namespace: "app",
 			Labels: map[string]string{
 				"app.kubernetes.io/component": "controller",
-				"app.kubernetes.io/name": name,
-				"app.kubernetes.io/version": vers,
+				"app.kubernetes.io/name":      name,
+				"app.kubernetes.io/version":   vers,
 			},
 		},
 		Spec: appsv1.DeploymentSpec{
@@ -85,7 +85,7 @@ func frontendDeployment(clientset *kubernetes.Clientset) error {
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels: map[string]string{
-					"app.kubernetes.io/name": name,
+						"app.kubernetes.io/name": name,
 					},
 				},
 				Spec: corev1.PodSpec{
@@ -205,8 +205,8 @@ func frontendService(clientset *kubernetes.Clientset) error {
 			Namespace: "app",
 			Labels: map[string]string{
 				"app.kubernetes.io/component": "service",
-				"app.kubernetes.io/name": name,
-				"app.kubernetes.io/version": vers,
+				"app.kubernetes.io/name":      name,
+				"app.kubernetes.io/version":   vers,
 			},
 		},
 		Spec: corev1.ServiceSpec{
@@ -232,7 +232,7 @@ func frontendService(clientset *kubernetes.Clientset) error {
 			time.Sleep(time.Duration(i*2) * time.Second)
 			if i >= MaxRetries {
 				err = fmt.Errorf("end of retries for frontend service: %w", err)
-			return err
+				return err
 			}
 		} else {
 			break
@@ -254,7 +254,7 @@ func frontendIngress(clientset *kubernetes.Clientset) error {
 			Namespace: "app",
 			Labels: map[string]string{
 				"app.kubernetes.io/component": "ingress",
-				"app.kubernetes.io/name": "ingress-nginx",
+				"app.kubernetes.io/name":      "ingress-nginx",
 			},
 			Annotations: map[string]string{
 				"nginx.ingress.kubernetes.io/configuration-snippet": `

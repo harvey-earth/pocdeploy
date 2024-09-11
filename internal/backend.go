@@ -42,7 +42,7 @@ func ConfigureBackend() error {
 				"namespace": namespace,
 				"labels": map[string]string{
 					"app.kubernetes.io/component": "cluster",
-					"app.kubernetes.io/name": "backend",
+					"app.kubernetes.io/name":      "backend",
 				},
 			},
 			"spec": map[string]any{
@@ -90,7 +90,7 @@ func InitBackend() error {
 			Namespace: "app",
 			Labels: map[string]string{
 				"app.kubernetes.io/component": "job",
-				"app.kubernetes.io/name": "backend-init",
+				"app.kubernetes.io/name":      "backend-init",
 			},
 		},
 		Spec: batchv1.JobSpec{
@@ -184,22 +184,16 @@ func InstallBackend() error {
 	if err != nil {
 		return err
 	}
-	tempfile, err := os.CreateTemp("", "cnpg-1.24.0-*.yaml")
+
+	tempfile, err := writeTempFile(cnpgContent)
 	if err != nil {
-		return err
+		err = fmt.Errorf("error writing CNPG tempfile: %w", err)
 	}
 	defer os.Remove(tempfile.Name())
 
-	if _, err := tempfile.Write(cnpgContent); err != nil {
-		return err
-	}
-	if err = tempfile.Close(); err != nil {
-		return err
-	}
-	cfgName := tempfile.Name()
-
-	cmd := exec.Command("kubectl", "apply", "--server-side", "-f", cfgName)
+	cmd := exec.Command("kubectl", "apply", "--server-side", "-f", tempfile.Name())
 	if err := cmd.Run(); err != nil {
+		err = fmt.Errorf("error installing CNPG with kubectl: %w", err)
 		return err
 	}
 	fmt.Println("CNPG Deployed server side")

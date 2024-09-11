@@ -29,7 +29,7 @@ func CreateAdminUser() error {
 			Namespace: "app",
 			Labels: map[string]string{
 				"app.kubernetes.io/component": "job",
-				"app.kubernetes.io/name": "create-admin",
+				"app.kubernetes.io/name":      "create-admin",
 			},
 		},
 		Spec: v1.JobSpec{

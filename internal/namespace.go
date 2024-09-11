@@ -29,16 +29,6 @@ func CreateNamespaces() error {
 		return err
 	}
 
-	monNS := &corev1.Namespace{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: "monitoring",
-		},
-	}
-	_, err = clientset.CoreV1().Namespaces().Create(context.Background(), monNS, metav1.CreateOptions{})
-	if err != nil {
-		err = fmt.Errorf("error creating namespace %s: %w", string(monNS.ObjectMeta.Name), err)
-		return err
-	}
-	fmt.Println("Namespaces created")
+	fmt.Println("Namespace created")
 	return nil
 }

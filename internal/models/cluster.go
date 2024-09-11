@@ -15,8 +15,8 @@ const (
 
 // KubernetesCluster represents the k8s cluster
 type KubernetesCluster struct {
-	Name    string
-	Version string
-	Type    KubernetesClusterType
-	Port 	int
+	Name string
+	Type KubernetesClusterType
+	Port int
+	Size []int
 }
