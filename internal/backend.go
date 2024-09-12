@@ -71,6 +71,7 @@ func ConfigureBackend() error {
 	return nil
 }
 
+// InitBackend starts the job to initialize the backend for each type of framework
 func InitBackend(t string) error {
 	fmt.Println("Starting Backend initialization")
 	switch t {
@@ -78,6 +79,12 @@ func InitBackend(t string) error {
 		err := initDjangoBackend()
 		if err != nil {
 			err = fmt.Errorf("error initializing django backend: %w", err)
+			return err
+		}
+	case "ror":
+		err := initRORBackend()
+		if err != nil {
+			err = fmt.Errorf("error initializing ruby on rails backend: %w", err)
 			return err
 		}
 	}
@@ -169,6 +176,121 @@ func initDjangoBackend() error {
 												Name: "poc-backend-cluster-app",
 											},
 											Key: "host",
+										},
+									},
+								},
+							},
+						},
+					},
+					RestartPolicy: corev1.RestartPolicyOnFailure,
+				},
+			},
+		},
+	}
+
+	if _, err = clientset.BatchV1().Jobs("app").Create(context.Background(), job, metav1.CreateOptions{}); err != nil {
+		err = fmt.Errorf("error creating backend-init job: %w", err)
+		return err
+	}
+
+	fmt.Println("Backend migration job started")
+	return nil
+}
+
+func initRORBackend() error {
+	fmt.Println("Starting Ruby on Rails backend migration job")
+
+	imgStr := viper.GetString("frontend.image") + ":" + viper.GetString("frontend.version")
+	var backoffLimit int32 = 10
+
+	clientset, err := kubernetesDefaultClient()
+	if err != nil {
+		err = fmt.Errorf("error creating default client for init backend: %w", err)
+		return err
+	}
+
+	job := &batchv1.Job{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "backend-init",
+			Namespace: "app",
+			Labels: map[string]string{
+				"app.kubernetes.io/component": "job",
+				"app.kubernetes.io/name":      "backend-init",
+			},
+		},
+		Spec: batchv1.JobSpec{
+			BackoffLimit: &backoffLimit,
+			Template: corev1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels: map[string]string{
+						"app.kubernetes.io/name": "backend-init",
+					},
+				},
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{
+						{
+							Name:  "backend-init",
+							Image: imgStr,
+							Command: []string{
+								"bundle",
+								"exec",
+								"rails",
+								"db:prepare",
+							},
+							ImagePullPolicy: corev1.PullNever,
+							Env: []corev1.EnvVar{
+								{
+									Name: "DATABASE_NAME",
+									ValueFrom: &corev1.EnvVarSource{
+										SecretKeyRef: &corev1.SecretKeySelector{
+											LocalObjectReference: corev1.LocalObjectReference{
+												Name: "poc-backend-cluster-app",
+											},
+											Key: "dbname",
+										},
+									},
+								},
+								{
+									Name: "DATABASE_USER",
+									ValueFrom: &corev1.EnvVarSource{
+										SecretKeyRef: &corev1.SecretKeySelector{
+											LocalObjectReference: corev1.LocalObjectReference{
+												Name: "poc-backend-cluster-app",
+											},
+											Key: "username",
+										},
+									},
+								},
+								{
+									Name: "DATABASE_PASSWORD",
+									ValueFrom: &corev1.EnvVarSource{
+										SecretKeyRef: &corev1.SecretKeySelector{
+											LocalObjectReference: corev1.LocalObjectReference{
+												Name: "poc-backend-cluster-app",
+											},
+											Key: "password",
+										},
+									},
+								},
+								{
+									Name: "DATABASE_HOST",
+									ValueFrom: &corev1.EnvVarSource{
+										SecretKeyRef: &corev1.SecretKeySelector{
+											LocalObjectReference: corev1.LocalObjectReference{
+												Name: "poc-backend-cluster-app",
+											},
+											Key: "host",
+										},
+									},
+								},
+								{
+									Name: "SECRET_KEY",
+									ValueFrom: &corev1.EnvVarSource{
+										SecretKeyRef: &corev1.SecretKeySelector{
+											LocalObjectReference: corev1.LocalObjectReference{
+												Name: "secret-key",
+											},
+											Key: "key",
 										},
 									},
 								},

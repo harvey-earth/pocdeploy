@@ -56,7 +56,7 @@ func frontendDeployment(clientset *kubernetes.Clientset) error {
 	fmt.Println("Creating frontend deployment")
 	name := viper.GetString("frontend.image")
 	vers := viper.GetString("frontend.version")
-
+	checkPath := viper.GetString("frontend.check_path")
 	imgStr := name + ":" + vers
 	reps := viper.GetInt32("frontend.size.min")
 
@@ -91,7 +91,7 @@ func frontendDeployment(clientset *kubernetes.Clientset) error {
 							LivenessProbe: &corev1.Probe{
 								ProbeHandler: corev1.ProbeHandler{
 									HTTPGet: &corev1.HTTPGetAction{
-										Path: "/admin",
+										Path: checkPath,
 										Port: intstr.FromInt(8000),
 									},
 								},
@@ -156,7 +156,7 @@ func frontendDeployment(clientset *kubernetes.Clientset) error {
 									ValueFrom: &corev1.EnvVarSource{
 										SecretKeyRef: &corev1.SecretKeySelector{
 											LocalObjectReference: corev1.LocalObjectReference{
-												Name: "django-secret-key",
+												Name: "secret-key",
 											},
 											Key: "key",
 										},
@@ -237,9 +237,30 @@ func frontendService(clientset *kubernetes.Clientset) error {
 	return nil
 }
 
-// Creates the frontend ingress
 func frontendIngress(clientset *kubernetes.Clientset) error {
 	fmt.Println("Configuring frontend ingress")
+	frontendType := viper.GetString("frontend.type")
+
+	switch frontendType {
+	case "django":
+		if err := frontendDjangoIngress(clientset); err != nil {
+			err = fmt.Errorf("error configuring django frontend ingress: %w", err)
+			return err
+		}
+	case "ror":
+		if err := frontendRorIngress(clientset); err != nil {
+			err = fmt.Errorf("error configuring RoR frontend ingress: %w", err)
+			return err
+		}
+	}
+
+	fmt.Println("Frontend Ingress configured")
+	return nil
+}
+
+// Creates the frontend ingress
+func frontendDjangoIngress(clientset *kubernetes.Clientset) error {
+	fmt.Println("Configuring Django frontend ingress")
 
 	pathPtr := networkingv1.PathTypePrefix
 
@@ -300,10 +321,10 @@ func frontendIngress(clientset *kubernetes.Clientset) error {
 
 	for i := 1; ; i++ {
 		if _, err := clientset.NetworkingV1().Ingresses("app").Create(context.Background(), ingress, metav1.CreateOptions{}); err != nil {
-			fmt.Printf("Retrying frontend ingress %d of %d\n", i, MaxRetries)
+			fmt.Printf("Retrying django frontend ingress %d of %d\n", i, MaxRetries)
 			time.Sleep(time.Duration(i*2) * time.Second)
 			if i >= MaxRetries {
-				err = fmt.Errorf("end of retries for frontend ingress: %w", err)
+				err = fmt.Errorf("end of retries for django frontend ingress: %w", err)
 				return err
 			}
 		} else {
@@ -311,7 +332,65 @@ func frontendIngress(clientset *kubernetes.Clientset) error {
 		}
 	}
 
-	fmt.Println("Frontend Ingress configured")
+	fmt.Println("Django Frontend Ingress configured")
+	return nil
+}
+
+// Creates the frontend ingress
+func frontendRorIngress(clientset *kubernetes.Clientset) error {
+	fmt.Println("Configuring RoR frontend ingress")
+
+	pathPtr := networkingv1.PathTypePrefix
+
+	ingress := &networkingv1.Ingress{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "frontend-ingress",
+			Namespace: "app",
+			Labels: map[string]string{
+				"app.kubernetes.io/component": "ingress",
+				"app.kubernetes.io/name":      "ingress-nginx",
+			},
+		},
+		Spec: networkingv1.IngressSpec{
+			Rules: []networkingv1.IngressRule{
+				{
+					IngressRuleValue: networkingv1.IngressRuleValue{
+						HTTP: &networkingv1.HTTPIngressRuleValue{
+							Paths: []networkingv1.HTTPIngressPath{
+								{
+									Path:     "/",
+									PathType: &pathPtr,
+									Backend: networkingv1.IngressBackend{
+										Service: &networkingv1.IngressServiceBackend{
+											Name: "frontend-service",
+											Port: networkingv1.ServiceBackendPort{
+												Number: 8000,
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	for i := 1; ; i++ {
+		if _, err := clientset.NetworkingV1().Ingresses("app").Create(context.Background(), ingress, metav1.CreateOptions{}); err != nil {
+			fmt.Printf("Retrying RoR frontend ingress %d of %d\n", i, MaxRetries)
+			time.Sleep(time.Duration(i*2) * time.Second)
+			if i >= MaxRetries {
+				err = fmt.Errorf("end of retries for RoR frontend ingress: %w", err)
+				return err
+			}
+		} else {
+			break
+		}
+	}
+
+	fmt.Println("RoR Frontend Ingress configured")
 	return nil
 }
 
@@ -374,7 +453,7 @@ func CreateSecretKeySecret() error {
 
 	secret := &v1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "django-secret-key",
+			Name:      "secret-key",
 			Namespace: "app",
 		},
 		Data: map[string][]byte{
@@ -384,7 +463,7 @@ func CreateSecretKeySecret() error {
 	}
 
 	if _, err = clientset.CoreV1().Secrets("app").Create(context.Background(), secret, metav1.CreateOptions{}); err != nil {
-		err = fmt.Errorf("error creating django secret key secret: %w", err)
+		err = fmt.Errorf("error creating secret key secret: %w", err)
 		return err
 	}
 

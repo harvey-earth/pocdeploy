@@ -1,17 +1,19 @@
 name: 'test'
-workers: 4
+workers: 2
 frontend:
   admin:
     username: 'admin'
     email: 'admin@example.com'
     password: 'PASSWORD'
-  dockerfile: './build/Dockerfile.django'
-  patch_dir: './build/patches'
-  path: './third_party/django-polls'
-  image: 'django-poc'
-  version: '0.0.2'
+  check_path: '/up'
+  dockerfile: './build/Dockerfile.ror'
+  patch_dir: './build/patches/ror'
+  path: './third_party/counter-app'
+  type: 'ror'
+  image: 'ror-poc'
+  version: '0.0.1'
   size:
-    min: 4
+    min: 3
 aws:
   region: 'us-west-2'
   instance_type: 't4g.small'

@@ -17,6 +17,7 @@ func BuildImage() (name string, vers string, err error) {
 	fmt.Println("Building docker image")
 
 	// Set variables
+	frontendType := viper.GetString("frontend.type")
 	path := viper.GetString("frontend.path")
 	patchDir := viper.GetString("frontend.patch_dir")
 	dockerfile := (viper.GetString("frontend.dockerfile"))
@@ -31,10 +32,12 @@ func BuildImage() (name string, vers string, err error) {
 		return "", "", err
 	}
 
-	// Copy requirements.txt if none exists
-	if err = copyRequirements(path); err != nil {
-		err = fmt.Errorf("error copying requirements.txt: %w", err)
-		return "", "", err
+	if frontendType == "django" {
+		// Copy requirements.txt if none exists for Django
+		if err = copyRequirements(path); err != nil {
+			err = fmt.Errorf("error copying requirements.txt: %w", err)
+			return "", "", err
+		}
 	}
 
 	// Build image

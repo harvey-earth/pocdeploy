@@ -1,0 +1,19 @@
+diff --git a/config/database.yml b/config/database.yml
+index 83b2932..5a4e6cd 100644
+--- a/config/database.yml
++++ b/config/database.yml
+@@ -3,7 +3,7 @@ default: &default
+   adapter: postgresql
+   encoding: unicode
+   pool: <%= ENV.fetch('RAILS_MAX_THREADS', '5') %>
+-  username: <%= ENV.fetch('DATABASE_USERNAME', 'counter') %>
++  username: <%= ENV.fetch('DATABASE_USER', 'counter') %>
+   password: <%= ENV.fetch('DATABASE_PASSWORD', '') %>
+   port: <%= ENV.fetch('DATABASE_PORT', '5432') %>
+   host: <%= ENV.fetch('DATABASE_HOST', 'localhost') %>
+@@ -18,4 +18,4 @@ test:
+ 
+ production:
+   <<: *default
+-  database: counter_app_production
++  database: <%= ENV.fetch('DATABASE_NAME', 'counter_app_production') %>

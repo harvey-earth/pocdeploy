@@ -10,8 +10,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// CreateAdminUser creates a job in a Django container to create an admin user using the variables from pocdeploy.yaml
-func CreateAdminUser() error {
+// CreateDjangoAdminUser creates a job in a Django container to create an admin user using the variables from pocdeploy.yaml
+func CreateDjangoAdminUser() error {
 	fmt.Println("Creating admin user creation job")
 
 	createStr := "from django.contrib.auth import get_user_model;User = get_user_model();User.objects.create_superuser('" + viper.GetString("frontend.admin.username") + "', '" + viper.GetString("frontend.admin.email") + "', '" + viper.GetString("frontend.admin.password") + "');"

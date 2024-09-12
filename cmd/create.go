@@ -16,9 +16,10 @@ var createCmd = &cobra.Command{
 If the type is not set, the default is a local Kind cluster.`,
 	Example: `pocdeploy create -t [kind]`,
 	Run: func(cmd *cobra.Command, args []string) {
-		frontendType := "django"
+		frontendType := viper.GetString("frontend.type")
+		clusterType := viper.GetString("type")
 		// Create cluster
-		if viper.GetString("type") == "kind" {
+		if clusterType == "kind" {
 			err := internal.CreateKindCluster(viper.GetString("name"))
 			if err != nil {
 				internal.Error("Error creating Kind cluster", err)
@@ -47,7 +48,7 @@ If the type is not set, the default is a local Kind cluster.`,
 		}
 
 		// Load docker image
-		if viper.GetString("type") == "kind" {
+		if clusterType == "kind" {
 			if err := internal.LoadKindImage(imgName, imgVers); err != nil {
 				internal.Error("Error loading image to Kind", err)
 			}
@@ -77,9 +78,11 @@ If the type is not set, the default is a local Kind cluster.`,
 			internal.Error("Error installing monitoring", err)
 		}
 
-		// Create job that creates superuser
-		if err = internal.CreateAdminUser(); err != nil {
-			internal.Error("Error creating superuser", err)
+		if frontendType == "django" {
+			// Create job that creates superuser for Django
+			if err = internal.CreateDjangoAdminUser(); err != nil {
+				internal.Error("Error creating superuser", err)
+			}
 		}
 	},
 }
