@@ -24,6 +24,7 @@ import (
 
 // ConfigureFrontend creates a deployment, service, and ingress for the frontend built container
 func ConfigureFrontend() error {
+	Info("Configuring frontend")
 
 	clientset, err := kubernetesDefaultClient()
 	if err != nil {
@@ -48,12 +49,13 @@ func ConfigureFrontend() error {
 		return err
 	}
 
+	Info("Frontend configured")
 	return nil
 }
 
 // frontendDeployment creates the deployment
 func frontendDeployment(clientset *kubernetes.Clientset) error {
-	fmt.Println("Creating frontend deployment")
+	Info("Creating frontend deployment")
 	name := viper.GetString("frontend.image")
 	vers := viper.GetString("frontend.version")
 	checkPath := viper.GetString("frontend.check_path")
@@ -95,8 +97,8 @@ func frontendDeployment(clientset *kubernetes.Clientset) error {
 										Port: intstr.FromInt(8000),
 									},
 								},
-								InitialDelaySeconds: 3,
-								PeriodSeconds:       3,
+								InitialDelaySeconds: 15,
+								PeriodSeconds:       30,
 							},
 							ReadinessProbe: &corev1.Probe{
 								ProbeHandler: corev1.ProbeHandler{
@@ -105,6 +107,8 @@ func frontendDeployment(clientset *kubernetes.Clientset) error {
 										Port: intstr.FromInt(8000),
 									},
 								},
+								InitialDelaySeconds: 15,
+								PeriodSeconds: 30,
 							},
 							Env: []corev1.EnvVar{
 								{
@@ -173,7 +177,8 @@ func frontendDeployment(clientset *kubernetes.Clientset) error {
 
 	for i := 1; ; i++ {
 		if _, err := clientset.AppsV1().Deployments("app").Create(context.Background(), deployment, metav1.CreateOptions{}); err != nil {
-			fmt.Printf("Retrying frontend deployment %d of %d\n", i, MaxRetries)
+			msg := fmt.Sprintf("Retrying frontend deployment %d of %d", i, MaxRetries)
+			Debug(msg)
 			time.Sleep(time.Duration(i*2) * time.Second)
 			if i >= MaxRetries {
 				err = fmt.Errorf("end of retries for frontend deployment: %w", err)
@@ -184,13 +189,13 @@ func frontendDeployment(clientset *kubernetes.Clientset) error {
 		}
 	}
 
-	fmt.Println("Frontend deployment configured")
+	Info("Frontend deployment created")
 	return nil
 }
 
 // frontendService creates the frontend-service
 func frontendService(clientset *kubernetes.Clientset) error {
-	fmt.Println("Configuring frontend service")
+	Info("Creating frontend service")
 	name := viper.GetString("frontend.image")
 	vers := viper.GetString("frontend.version")
 
@@ -222,7 +227,8 @@ func frontendService(clientset *kubernetes.Clientset) error {
 
 	for i := 1; ; i++ {
 		if _, err := clientset.CoreV1().Services("app").Create(context.Background(), service, metav1.CreateOptions{}); err != nil {
-			fmt.Printf("Retrying frontend service %d of %d\n", i, MaxRetries)
+			msg := fmt.Sprintf("Retrying frontend service %d of %d", i, MaxRetries)
+			Debug(msg)
 			time.Sleep(time.Duration(i*2) * time.Second)
 			if i >= MaxRetries {
 				err = fmt.Errorf("end of retries for frontend service: %w", err)
@@ -233,12 +239,12 @@ func frontendService(clientset *kubernetes.Clientset) error {
 		}
 	}
 
-	fmt.Println("Frontend service configured")
+	Info("Frontend service created")
 	return nil
 }
 
 func frontendIngress(clientset *kubernetes.Clientset) error {
-	fmt.Println("Configuring frontend ingress")
+	Info("Creating frontend ingress")
 	frontendType := viper.GetString("frontend.type")
 
 	switch frontendType {
@@ -254,13 +260,13 @@ func frontendIngress(clientset *kubernetes.Clientset) error {
 		}
 	}
 
-	fmt.Println("Frontend Ingress configured")
+	Info("Frontend ingress created")
 	return nil
 }
 
 // Creates the frontend ingress
 func frontendDjangoIngress(clientset *kubernetes.Clientset) error {
-	fmt.Println("Configuring Django frontend ingress")
+	Debug("Configuring Django frontend ingress")
 
 	pathPtr := networkingv1.PathTypePrefix
 
@@ -321,7 +327,8 @@ func frontendDjangoIngress(clientset *kubernetes.Clientset) error {
 
 	for i := 1; ; i++ {
 		if _, err := clientset.NetworkingV1().Ingresses("app").Create(context.Background(), ingress, metav1.CreateOptions{}); err != nil {
-			fmt.Printf("Retrying django frontend ingress %d of %d\n", i, MaxRetries)
+			msg := fmt.Sprintf("Retrying django frontend ingress %d of %d", i, MaxRetries)
+			Debug(msg)
 			time.Sleep(time.Duration(i*2) * time.Second)
 			if i >= MaxRetries {
 				err = fmt.Errorf("end of retries for django frontend ingress: %w", err)
@@ -332,13 +339,13 @@ func frontendDjangoIngress(clientset *kubernetes.Clientset) error {
 		}
 	}
 
-	fmt.Println("Django Frontend Ingress configured")
+	Debug("Django frontend ingress configured")
 	return nil
 }
 
 // Creates the frontend ingress
 func frontendRorIngress(clientset *kubernetes.Clientset) error {
-	fmt.Println("Configuring RoR frontend ingress")
+	Debug("Configuring RoR frontend ingress")
 
 	pathPtr := networkingv1.PathTypePrefix
 
@@ -379,7 +386,8 @@ func frontendRorIngress(clientset *kubernetes.Clientset) error {
 
 	for i := 1; ; i++ {
 		if _, err := clientset.NetworkingV1().Ingresses("app").Create(context.Background(), ingress, metav1.CreateOptions{}); err != nil {
-			fmt.Printf("Retrying RoR frontend ingress %d of %d\n", i, MaxRetries)
+			msg := fmt.Sprintf("Retrying RoR frontend ingress %d of %d", i, MaxRetries)
+			Debug(msg)
 			time.Sleep(time.Duration(i*2) * time.Second)
 			if i >= MaxRetries {
 				err = fmt.Errorf("end of retries for RoR frontend ingress: %w", err)
@@ -390,12 +398,13 @@ func frontendRorIngress(clientset *kubernetes.Clientset) error {
 		}
 	}
 
-	fmt.Println("RoR Frontend Ingress configured")
+	Debug("RoR frontend ingress configured")
 	return nil
 }
 
 // This installs nginx-ingress for Kind
 func applyKindNginxIngress() error {
+	Debug("Installing nginx-ingress for Kind")
 	ingressContent, err := d.DeployFiles.ReadFile("kind/k8s/nginx-ingress.yaml")
 	if err != nil {
 		return err
@@ -424,15 +433,16 @@ func applyKindNginxIngress() error {
 				err = fmt.Errorf("end of retries to apply kind nginx ingress: %w", err)
 				return err
 			} else {
+				msg := fmt.Sprintf("Retrying time %d of %d", i, MaxRetries)
+				Debug(msg)
 				time.Sleep(time.Duration(i*2) * time.Second)
-				fmt.Printf("Retrying time %d of %d\n", i, MaxRetries)
 			}
 		} else {
 			break
 		}
 	}
 
-	fmt.Println("Kind nginx ingress deployed")
+	Debug("Kind nginx-ingress installed")
 	return nil
 }
 

@@ -1,6 +1,8 @@
 package cmd
 
 import (
+	"fmt"
+
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
@@ -22,66 +24,78 @@ If the type is not set, the default is a local Kind cluster.`,
 		if clusterType == "kind" {
 			err := internal.CreateKindCluster(viper.GetString("name"))
 			if err != nil {
-				internal.Error("Error creating Kind cluster", err)
+				err = fmt.Errorf("Error creating Kind cluster: %w", err)
+				internal.Error(err)
 			}
 		}
 
 		// Create namespaces
 		if err := internal.CreateNamespaces(); err != nil {
-			internal.Error("Error creating namespaces", err)
+			err = fmt.Errorf("Error creating namespaces: %w", err)
+			internal.Error(err)
 		}
 
 		// Install backend (CloudNativePG operator)
 		if err := internal.InstallBackend(); err != nil {
-			internal.Error("Error installing backend", err)
+			err = fmt.Errorf("Error installing backend: %w", err)
+			internal.Error(err)
 		}
 
 		// Build image using name and version from config and return them
 		imgName, imgVers, err := internal.BuildImage()
 		if err != nil {
-			internal.Error("Error building image", err)
+			err = fmt.Errorf("Error building image: %w", err)
+			internal.Error(err)
 		}
 
 		// Install monitoring (prometheus operator)
 		if err = internal.InstallMonitoring(); err != nil {
-			internal.Error("Error installing monitoring", err)
+			err = fmt.Errorf("Error installing monitoring: %w", err)
+			internal.Error(err)
 		}
 
 		// Load docker image
 		if clusterType == "kind" {
 			if err := internal.LoadKindImage(imgName, imgVers); err != nil {
-				internal.Error("Error loading image to Kind", err)
+				err = fmt.Errorf("Error loading image to Kind: %w", err)
+				internal.Error(err)
 			}
 		}
 
 		// Deploy frontend with generated secret key
 		if err = internal.CreateSecretKeySecret(); err != nil {
-			internal.Error("Error creating namespaces", err)
+			err = fmt.Errorf("Error creating namespace: %w", err)
+			internal.Error(err)
 		}
 
 		if err = internal.ConfigureFrontend(); err != nil {
-			internal.Error("Error installing frontend", err)
+			err = fmt.Errorf("Error installing frontend: %w", err)
+			internal.Error(err)
 		}
 
 		// Configure CloudNativePG
 		if err = internal.ConfigureBackend(); err != nil {
-			internal.Error("Error installing backend", err)
+			err = fmt.Errorf("Error installing backend: %w", err)
+			internal.Error(err)
 		}
 
 		// Run Django migrations
 		if err = internal.InitBackend(frontendType); err != nil {
-			internal.Error("Error running migrations to initialize backend", err)
+			err = fmt.Errorf("Error running migrations to init backend: %w", err)
+			internal.Error(err)
 		}
 
 		// Deploy prometheus
 		if err = internal.ConfigureMonitoring(); err != nil {
-			internal.Error("Error installing monitoring", err)
+			err = fmt.Errorf("Error installing monitoring: %w", err)
+			internal.Error(err)
 		}
 
 		if frontendType == "django" {
 			// Create job that creates superuser for Django
 			if err = internal.CreateDjangoAdminUser(); err != nil {
-				internal.Error("Error creating superuser", err)
+				err = fmt.Errorf("Error creating superuser: %w", err)
+				internal.Error(err)
 			}
 		}
 	},

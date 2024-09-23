@@ -17,7 +17,7 @@ import (
 
 // ConfigureMonitoring creates all necessary components for prometheus monitoring
 func ConfigureMonitoring() error {
-	fmt.Println("Configuring monitoring")
+	Info("Configuring monitoring")
 	clientdyn, err := kubernetesDynamicClient()
 	if err != nil {
 		err = fmt.Errorf("error creating client: %w", err)
@@ -29,12 +29,13 @@ func ConfigureMonitoring() error {
 		return err
 	}
 
+	Info("Monitoring configured")
 	return nil
 }
 
 // InstallMonitoring installs the prometheus operator
 func InstallMonitoring() error {
-	fmt.Println("Installing monitoring")
+	Info("Installing monitoring")
 	if err := installPrometheus(PrometheusVersion); err != nil {
 		err = fmt.Errorf("error installing prometheus: %w", err)
 		return err
@@ -44,7 +45,7 @@ func InstallMonitoring() error {
 }
 
 func configurePrometheus(clientset *dynamic.DynamicClient) error {
-	fmt.Println("Configuring Prometheus operator")
+	Debug("Configuring Prometheus operator")
 
 	prometheusGVR := schema.GroupVersionResource{
 		Group:    "monitoring.coreos.com",
@@ -112,7 +113,8 @@ func configurePrometheus(clientset *dynamic.DynamicClient) error {
 	// Install Prometheus Resource
 	for i := 1; ; i++ {
 		if _, err := clientset.Resource(prometheusGVR).Namespace("app").Create(context.Background(), prometheus, metav1.CreateOptions{}); err != nil {
-			fmt.Printf("Retrying prometheus resource configuration %d of %d\n", i, MaxRetries)
+			msg := fmt.Sprintf("Retrying prometheus resource configuration %d of %d", i, MaxRetries)
+			Debug(msg)
 			time.Sleep(time.Duration(i*2) * time.Second)
 			if i >= MaxRetries {
 				err = fmt.Errorf("error installing prometheus resource: %w", err)
@@ -126,7 +128,8 @@ func configurePrometheus(clientset *dynamic.DynamicClient) error {
 	// Install PodMonitor
 	for i := 15; ; i++ {
 		if _, err := clientset.Resource(podGVR).Namespace("app").Create(context.Background(), podMonitor, metav1.CreateOptions{}); err != nil {
-			fmt.Printf("Retrying prometheus podmonitor configuration %d of %d\n", i, MaxRetries)
+			msg := fmt.Sprintf("Retrying prometheus podmonitor configuration %d of %d", i, MaxRetries)
+			Debug(msg)
 			time.Sleep(time.Duration(i*2) * time.Second)
 			if i >= MaxRetries {
 				err = fmt.Errorf("end of retries for prometheus configuration: %w", err)
@@ -137,12 +140,12 @@ func configurePrometheus(clientset *dynamic.DynamicClient) error {
 		}
 	}
 
-	fmt.Println("Prometheus PodMonitor configured")
+	Debug("Prometheus PodMonitor configured")
 	return nil
 }
 
 func installPrometheus(vers string) error {
-	fmt.Println("Installing Prometheus operator")
+	Debug("Installing Prometheus operator")
 
 	// Write to temp file
 	promContent, err := d.DeployFiles.ReadFile("common/server/prometheus-operator-" + vers + ".yaml")
@@ -162,6 +165,6 @@ func installPrometheus(vers string) error {
 		return err
 	}
 
-	fmt.Println("Prometheus Operator installed")
+	Debug("Prometheus Operator installed")
 	return nil
 }

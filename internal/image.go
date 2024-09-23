@@ -14,7 +14,7 @@ import (
 
 // BuildImage builds a docker image using the set variables from pocdeploy.yaml and returns a name and version of the built image
 func BuildImage() (name string, vers string, err error) {
-	fmt.Println("Building docker image")
+	Info("Building docker image")
 
 	// Set variables
 	frontendType := viper.GetString("frontend.type")
@@ -46,7 +46,7 @@ func BuildImage() (name string, vers string, err error) {
 		return "", "", err
 	}
 
-	fmt.Println("Docker image " + imgStr + " built")
+	Info("Docker image " + imgStr + " built")
 	return image, vers, nil
 }
 
@@ -63,7 +63,8 @@ func cmdApplyPatches(repo string, patchDir string) error {
 		return err
 	}
 	if len(patchFiles) == 0 {
-		fmt.Printf("%s empty directory, skipping...\n", patchDir)
+		msg := fmt.Sprintf("%s empty directory, skipping...\n", patchDir)
+		Debug(msg)
 		return nil
 	}
 	repoPath, err := filepath.Abs(repo)
@@ -72,7 +73,8 @@ func cmdApplyPatches(repo string, patchDir string) error {
 		return err
 	}
 
-	fmt.Printf("Applying patches from %s to %s\n", patchDir, repo)
+	msg := fmt.Sprintf("Applying patches from %s to %s", patchDir, repo)
+	Debug(msg)
 	// Iterate through patch files
 	for _, f := range patchFiles {
 		filename := patchPath + "/" + f.Name()
@@ -85,7 +87,7 @@ func cmdApplyPatches(repo string, patchDir string) error {
 		}
 	}
 
-	fmt.Println("Applied patches")
+	Debug("Applied patches")
 	return nil
 }
 
@@ -94,14 +96,15 @@ func copyRequirements(dest string) error {
 
 	if _, err := os.Stat(dst); err == nil {
 		// File exists, skip copying
-		fmt.Printf("File %s already exists, skipping...\n", dst)
+		msg := fmt.Sprintf("File %s already exists, skipping...\n", dst)
+		Debug(msg)
 		return nil
 	} else if !os.IsNotExist(err) {
 		// Some other error occurred while checking file existence
 		return err
 	}
 
-	fmt.Println("Proceeding to copy in frontend-requirements.txt")
+	Debug("Proceeding to copy in frontend-requirements.txt")
 	// Open the source file
 	srcFile, err := d.DeployFiles.Open("frontend/frontend-requirements.txt")
 	if err != nil {

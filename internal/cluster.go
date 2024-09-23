@@ -14,7 +14,7 @@ import (
 
 // CreateKindCluster runs a shell command to create a Kind cluster
 func CreateKindCluster(name string) error {
-	fmt.Println("Creating kind cluster")
+	Info("Creating Kind cluster")
 
 	clusterSize := make([]int, viper.GetInt("workers")-1)
 	cluster := models.KubernetesCluster{
@@ -51,13 +51,13 @@ func CreateKindCluster(name string) error {
 		return err
 	}
 
-	fmt.Println("Cluster created")
+	Info("Cluster created")
 	return nil
 }
 
 // DeleteKindCluster runs a shell command to delete a Kind cluster
 func DeleteKindCluster(name string) error {
-	fmt.Println("Deleting kind cluster")
+	Info("Deleting Kind cluster")
 
 	cmd := exec.Command("kind", "delete", "cluster", "--name", name)
 	if err := cmd.Run(); err != nil {
@@ -65,13 +65,13 @@ func DeleteKindCluster(name string) error {
 		return err
 	}
 
-	fmt.Println("Cluster " + name + " deleted")
+	Info("Cluster " + name + " deleted")
 	return nil
 }
 
 // LoadKindImage loads a docker image to the Kind cluster
 func LoadKindImage(name string, vers string) error {
-	fmt.Println("Loading docker image to kind")
+	Debug("Loading docker image to Kind cluster")
 
 	img := name + ":" + vers
 	cmd := exec.Command("kind", "load", "docker-image", img, "--name", "test")
@@ -81,6 +81,6 @@ func LoadKindImage(name string, vers string) error {
 		return err
 	}
 
-	fmt.Println("Image loaded")
+	Debug("Image loaded to Kind cluster")
 	return nil
 }

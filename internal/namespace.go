@@ -10,7 +10,7 @@ import (
 
 // CreateNamespaces creates the app and monitoring namespaces
 func CreateNamespaces() error {
-	fmt.Println("Creating namespaces")
+	Info("Creating namespace")
 
 	clientset, err := kubernetesDefaultClient()
 	if err != nil {
@@ -28,6 +28,6 @@ func CreateNamespaces() error {
 		return err
 	}
 
-	fmt.Println("Namespace created")
+	Info("Namespace created")
 	return nil
 }

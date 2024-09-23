@@ -19,7 +19,7 @@ import (
 
 // ConfigureBackend sets up CloudNative PG
 func ConfigureBackend() error {
-	fmt.Println("Configuring CloudNative PG Cluster")
+	Info("Configuring CloudNative PG Cluster")
 	namespace := "app"
 
 	clientset, err := kubernetesDynamicClient()
@@ -56,7 +56,8 @@ func ConfigureBackend() error {
 
 	for i := 1; ; i++ {
 		if _, err := clientset.Resource(postgresGVR).Namespace(namespace).Create(context.Background(), postgresCluster, metav1.CreateOptions{}); err != nil {
-			fmt.Printf("Retrying backend configuration %d of %d\n", i, MaxRetries)
+			msg := fmt.Sprintf("Retrying backend configuration %d of %d", i, MaxRetries)
+			Debug(msg)
 			time.Sleep(time.Duration(i*2) * time.Second)
 			if i >= MaxRetries {
 				err = fmt.Errorf("reached end of retries for backend configuration: %w", err)
@@ -67,13 +68,13 @@ func ConfigureBackend() error {
 		}
 	}
 
-	fmt.Println("CloudNative PG Cluster configured")
+	Info("CloudNative PG Cluster configured")
 	return nil
 }
 
 // InitBackend starts the job to initialize the backend for each type of framework
 func InitBackend(t string) error {
-	fmt.Println("Starting Backend initialization")
+	Info("Starting backend initialization")
 	switch t {
 	case "django":
 		err := initDjangoBackend()
@@ -89,13 +90,13 @@ func InitBackend(t string) error {
 		}
 	}
 
-	fmt.Println("Backend initialized")
+	Info("Backend initialized")
 	return nil
 }
 
 // InitBackend creates a job in the created frontend container to run migrations
 func initDjangoBackend() error {
-	fmt.Println("Starting django backend migrations job")
+	Debug("Starting django backend migrations job")
 
 	imgStr := viper.GetString("frontend.image") + ":" + viper.GetString("frontend.version")
 	var backoffLimit int32 = 10
@@ -193,12 +194,12 @@ func initDjangoBackend() error {
 		return err
 	}
 
-	fmt.Println("Backend migration job started")
+	Debug("Django backend migration job started")
 	return nil
 }
 
 func initRORBackend() error {
-	fmt.Println("Starting Ruby on Rails backend migration job")
+	Debug("Starting Ruby on Rails backend migration job")
 
 	imgStr := viper.GetString("frontend.image") + ":" + viper.GetString("frontend.version")
 	var backoffLimit int32 = 10
@@ -308,13 +309,13 @@ func initRORBackend() error {
 		return err
 	}
 
-	fmt.Println("Backend migration job started")
+	Debug("Ruby on Rails Backend migration job started")
 	return nil
 }
 
 // InstallBackend installs the CNPG operator
 func InstallBackend() error {
-	fmt.Println("Installing CNPG operator")
+	Debug("Installing CNPG operator")
 
 	// Use embedded cnpg-1.24.0.yaml file to pass to kubectl apply
 	cnpgContent, err := d.DeployFiles.ReadFile("common/server/cnpg-1.24.0.yaml")
@@ -334,6 +335,6 @@ func InstallBackend() error {
 		return err
 	}
 
-	fmt.Println("CNPG Deployed server side")
+	Debug("CNPG Operator installed")
 	return nil
 }

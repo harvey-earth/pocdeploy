@@ -12,7 +12,7 @@ import (
 
 // CreateDjangoAdminUser creates a job in a Django container to create an admin user using the variables from pocdeploy.yaml
 func CreateDjangoAdminUser() error {
-	fmt.Println("Creating admin user creation job")
+	Info("Creating admin user creation job")
 
 	createStr := "from django.contrib.auth import get_user_model;User = get_user_model();User.objects.create_superuser('" + viper.GetString("frontend.admin.username") + "', '" + viper.GetString("frontend.admin.email") + "', '" + viper.GetString("frontend.admin.password") + "');"
 	var backoffLimit int32 = 10
@@ -109,6 +109,6 @@ func CreateDjangoAdminUser() error {
 		return err
 	}
 
-	fmt.Println("Admin user creation job started")
+	Info("Admin user creation job started")
 	return nil
 }

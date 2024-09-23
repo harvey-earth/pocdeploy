@@ -1,6 +1,8 @@
 package cmd
 
 import (
+	"fmt"
+
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
@@ -20,7 +22,8 @@ This will delete resources using Terraform, and it will not be graceful.`,
 		// Run DeleteKindCluster for type kind
 		if viper.GetString("type") == "kind" {
 			if err := internal.DeleteKindCluster(viper.GetString("name")); err != nil {
-				internal.Error("Error deleting Kind cluster named 'test'", err)
+				err = fmt.Errorf("Error deleting Kind cluster: %w", err)
+				internal.Error(err)
 			}
 		}
 	},
