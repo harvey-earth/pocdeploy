@@ -6,6 +6,8 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+
+	"github.com/harvey-earth/pocdeploy/internal"
 )
 
 var cfgFile string
@@ -41,6 +43,15 @@ func init() {
 	// Cluster Type
 	rootCmd.PersistentFlags().StringP("type", "t", "kind", "Type of cluster(kind)")
 	viper.BindPFlag("type", rootCmd.PersistentFlags().Lookup("type"))
+
+	// Verbose Levels
+	rootCmd.PersistentFlags().BoolP("debug", "d", false, "debug output")
+	viper.BindPFlag("debug", rootCmd.PersistentFlags().Lookup("debug"))
+	rootCmd.PersistentFlags().BoolP("verbose", "v", false, "verbose output")
+	viper.BindPFlag("verbose", rootCmd.PersistentFlags().Lookup("verbose"))
+	rootCmd.PersistentFlags().BoolP("quiet", "q", false, "no output")
+	viper.BindPFlag("quiet", rootCmd.PersistentFlags().Lookup("quiet"))
+	rootCmd.MarkFlagsMutuallyExclusive("debug", "verbose", "quiet")
 }
 
 // initConfig reads in config file and ENV variables if set.
@@ -64,6 +75,13 @@ func initConfig() {
 
 	// If a config file is found, read it in.
 	if err := viper.ReadInConfig(); err == nil {
+		if q := viper.GetBool("quiet"); !q {
 		fmt.Fprintln(os.Stderr, "Using config file:", viper.ConfigFileUsed())
+		}
+	}
+
+	// Initialize Logger
+	if err := internal.InitLogger(); err != nil {
+		panic(err)
 	}
 }

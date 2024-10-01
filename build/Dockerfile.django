@@ -1,0 +1,19 @@
+FROM python:3.12.5-alpine
+
+WORKDIR /app
+
+COPY requirements.txt /app
+
+RUN apk add --no-cache --virtual postgresql-dev \
+    && python -m venv /env \
+    && /env/bin/pip3 install --upgrade pip \
+    && /env/bin/pip3 install --no-cache-dir -r /app/requirements.txt
+
+COPY . ./
+
+RUN /env/bin/python /app/manage.py collectstatic
+
+EXPOSE 8000
+
+ENTRYPOINT ["/env/bin/python"]
+CMD ["/app/manage.py", "runserver", "0.0.0.0:8000"]

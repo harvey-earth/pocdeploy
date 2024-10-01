@@ -1,0 +1,20 @@
+# kind cluster
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+name: {{ .Name }}
+nodes:
+- role: control-plane
+- role: worker
+  kubeadmConfigPatches:
+  - |
+    kind: InitConfiguration
+    nodeRegistration:
+      kubeletExtraArgs:
+        node-labels: "ingress-ready=true"
+  extraPortMappings:
+  - containerPort: 30880
+    hostPort: 80
+    protocol: TCP
+{{ range .Size }}
+- role: worker
+{{ end }}

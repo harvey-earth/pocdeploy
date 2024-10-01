@@ -1,3 +1,6 @@
 [submodule "third_party/django-polls"]
 	path = third_party/django-polls
 	url = https://github.com/do-community/django-polls.git
+[submodule "third_party/counter-app"]
+	path = third_party/counter-app
+	url = https://github.com/harvey-earth/counter-app

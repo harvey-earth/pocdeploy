@@ -1,6 +1,3 @@
-/*
-Copyright © 2024 Jamie Harvey <jamie@harvey.earth>
-*/
 package cmd
 
 import (
@@ -9,7 +6,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
-	c "github.com/harvey-earth/pocdeploy/internal"
+	"github.com/harvey-earth/pocdeploy/internal"
 )
 
 // destroyCmd represents the destroy command
@@ -19,11 +16,15 @@ var deleteCmd = &cobra.Command{
 	Long: `deletes the kubernetes cluster created with the "create" command.
 
 This will delete resources using Terraform, and it will not be graceful.`,
+	Example: `pocdeploy delete -t [kind]`,
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("delete called")
 
+		// Run DeleteKindCluster for type kind
 		if viper.GetString("type") == "kind" {
-			c.DeleteKindCluster("test")
+			if err := internal.DeleteKindCluster(viper.GetString("name")); err != nil {
+				err = fmt.Errorf("Error deleting Kind cluster: %w", err)
+				internal.Error(err)
+			}
 		}
 	},
 }

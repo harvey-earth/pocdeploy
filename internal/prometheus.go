@@ -3,147 +3,168 @@ package internal
 import (
 	"context"
 	"fmt"
+	"os"
+	"os/exec"
 	"time"
 
-	appsv1 "k8s.io/api/apps/v1"
-	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/util/intstr"
-	"k8s.io/client-go/kubernetes"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/client-go/dynamic"
+
+	d "github.com/harvey-earth/pocdeploy/deploy"
 )
 
 // ConfigureMonitoring creates all necessary components for prometheus monitoring
-func ConfigureMonitoring() {
-	clientset := kubernetesDefaultClient()
-
-	prometheusConfigMap(clientset)
-	prometheusDeployment(clientset)
-	prometheusService(clientset)
-
-}
-
-func prometheusConfigMap(clientset *kubernetes.Clientset) {
-	cfgMap := &corev1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "prometheus-conf",
-			Namespace: "monitoring",
-		},
-		Data: map[string]string{
-			"prometheus.yml": `
-global:
-  scrape_interval: 15s
-  evaluation_interval: 15s
-scrape_configs:
-  - job_name: 'prometheus'
-    static_configs:
-      - targets: ['localhost:9090']`,
-		},
-	}
-
-	_, err := clientset.CoreV1().ConfigMaps("monitoring").Create(context.Background(), cfgMap, metav1.CreateOptions{})
+func ConfigureMonitoring() error {
+	Info("Configuring monitoring")
+	clientdyn, err := kubernetesDynamicClient()
 	if err != nil {
-		panic(err)
+		err = fmt.Errorf("error creating client: %w", err)
+		return err
 	}
+
+	if err = configurePrometheus(clientdyn); err != nil {
+		err = fmt.Errorf("error configuring prometheus: %w", err)
+		return err
+	}
+
+	Info("Monitoring configured")
+	return nil
 }
 
-func prometheusDeployment(clientset *kubernetes.Clientset) {
-	fmt.Println("Configuring prometheus deployment")
+// InstallMonitoring installs the prometheus operator
+func InstallMonitoring() error {
+	Info("Installing monitoring")
+	if err := installPrometheus(PrometheusVersion); err != nil {
+		err = fmt.Errorf("error installing prometheus: %w", err)
+		return err
+	}
 
-	reps := int32(1)
+	return nil
+}
 
-	deployment := &appsv1.Deployment{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "prometheus",
-			Namespace: "monitoring",
+func configurePrometheus(clientset *dynamic.DynamicClient) error {
+	Debug("Configuring Prometheus operator")
+
+	prometheusGVR := schema.GroupVersionResource{
+		Group:    "monitoring.coreos.com",
+		Version:  "v1",
+		Resource: "prometheuses",
+	}
+
+	podGVR := schema.GroupVersionResource{
+		Group:    "monitoring.coreos.com",
+		Version:  "v1",
+		Resource: "podmonitors",
+	}
+
+	prometheus := &unstructured.Unstructured{
+		Object: map[string]any{
+			"apiVersion": "monitoring.coreos.com/v1",
+			"kind":       "Prometheus",
+			"metadata": map[string]string{
+				"name": "monitoring",
+			},
+			"spec": map[string]any{
+				"serviceAccountName": "prometheus",
+				"podMonitorSelector": map[string]any{
+					"matchLabels": map[string]string{
+						"app.kubernetes.io/name": "prometheus",
+					},
+				},
+				"resources": map[string]any{
+					"requests": map[string]string{
+						"memory": "400Mi",
+					},
+				},
+				"enableAdminAPI": false,
+			},
 		},
-		Spec: appsv1.DeploymentSpec{
-			Replicas: &reps,
-			Selector: &metav1.LabelSelector{
-				MatchLabels: map[string]string{
-					"app": "prometheus",
+	}
+
+	podMonitor := &unstructured.Unstructured{
+		Object: map[string]any{
+			"apiVersion": "monitoring.coreos.com/v1",
+			"kind":       "PodMonitor",
+			"metadata": map[string]any{
+				"name":      "monitoring",
+				"namespace": "app",
+				"labels": map[string]string{
+					"app.kubernetes.io/component": "podmonitor",
+					"app.kubernetes.io/name":      "prometheus",
 				},
 			},
-			Template: corev1.PodTemplateSpec{
-				ObjectMeta: metav1.ObjectMeta{
-					Labels: map[string]string{
-						"app": "prometheus",
+			"spec": map[string]any{
+				"selector": map[string]any{
+					"matchLabels": map[string]string{
+						"app.kubernetes.io/name": "backend",
 					},
 				},
-				Spec: corev1.PodSpec{
-					Containers: []corev1.Container{
-						{
-							Name:  "prometheus",
-							Image: "prom/prometheus",
-							Ports: []corev1.ContainerPort{
-								{
-									ContainerPort: 9090,
-								},
-							},
-							VolumeMounts: []corev1.VolumeMount{
-								{
-									Name:      "config-volume",
-									MountPath: "/etc/prometheus",
-								},
-							},
-						},
-					},
-					Volumes: []corev1.Volume{
-						{
-							Name: "config-volume",
-							VolumeSource: corev1.VolumeSource{
-								ConfigMap: &corev1.ConfigMapVolumeSource{
-									LocalObjectReference: corev1.LocalObjectReference{
-										Name: "prometheus-conf",
-									},
-								},
-							},
-						},
+				"podMetricsEndpoints": []map[string]any{
+					{
+						"port": "metrics",
 					},
 				},
 			},
 		},
 	}
 
+	// Install Prometheus Resource
 	for i := 1; ; i++ {
-		_, err := clientset.AppsV1().Deployments("monitoring").Create(context.Background(), deployment, metav1.CreateOptions{})
-		if err != nil {
-			fmt.Printf("Retrying prometheus deployment %d of 5\n", i+1)
+		if _, err := clientset.Resource(prometheusGVR).Namespace("app").Create(context.Background(), prometheus, metav1.CreateOptions{}); err != nil {
+			msg := fmt.Sprintf("Retrying prometheus resource configuration %d of %d", i, MaxRetries)
+			Debug(msg)
 			time.Sleep(time.Duration(i*2) * time.Second)
 			if i >= MaxRetries {
-				panic(err)
+				err = fmt.Errorf("error installing prometheus resource: %w", err)
+				return err
 			}
 		} else {
 			break
 		}
 	}
-	fmt.Println("Prometheus Deployment configured")
+
+	// Install PodMonitor
+	for i := 15; ; i++ {
+		if _, err := clientset.Resource(podGVR).Namespace("app").Create(context.Background(), podMonitor, metav1.CreateOptions{}); err != nil {
+			msg := fmt.Sprintf("Retrying prometheus podmonitor configuration %d of %d", i, MaxRetries)
+			Debug(msg)
+			time.Sleep(time.Duration(i*2) * time.Second)
+			if i >= MaxRetries {
+				err = fmt.Errorf("end of retries for prometheus configuration: %w", err)
+				return err
+			}
+		} else {
+			break
+		}
+	}
+
+	Debug("Prometheus PodMonitor configured")
+	return nil
 }
 
-func prometheusService(clientset *kubernetes.Clientset) {
-	fmt.Println("Configuring prometheus service")
+func installPrometheus(vers string) error {
+	Debug("Installing Prometheus operator")
 
-	service := &corev1.Service{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "prometheus-service",
-			Namespace: "monitoring",
-		},
-		Spec: corev1.ServiceSpec{
-			Selector: map[string]string{
-				"app": "prometheus",
-			},
-			Ports: []corev1.ServicePort{
-				{
-					Port:       9090,
-					TargetPort: intstr.FromInt32(9090),
-					Protocol:   corev1.ProtocolTCP,
-				},
-			},
-		},
-	}
-
-	_, err := clientset.CoreV1().Services("monitoring").Create(context.Background(), service, metav1.CreateOptions{})
+	// Write to temp file
+	promContent, err := d.DeployFiles.ReadFile("common/server/prometheus-operator-" + vers + ".yaml")
 	if err != nil {
-		panic(err)
+		return err
 	}
-	fmt.Println("Prometheus Service configured")
+	tempfile, err := writeTempFile(promContent)
+	if err != nil {
+		err = fmt.Errorf("error writing prometheus operator tempfile: %w", err)
+	}
+	defer os.Remove(tempfile.Name())
+
+	// Run install command
+	cmd := exec.Command("kubectl", "apply", "--server-side", "-f", tempfile.Name())
+	if err := cmd.Run(); err != nil {
+		err = fmt.Errorf("error running kubectl: %w", err)
+		return err
+	}
+
+	Debug("Prometheus Operator installed")
+	return nil
 }

@@ -1,0 +1,13 @@
+diff --git a/bin/bundle b/bin/bundle
+index d92c39d..9cccf5f 100755
+--- a/bin/bundle
++++ b/bin/bundle
+@@ -39,7 +39,7 @@ m = Module.new do
+ 
+   def gemfile
+     gemfile = ENV['BUNDLE_GEMFILE']
+-    return gemfile if gemfile.present?
++    return gemfile if gemfile && !gemfile.empty?
+ 
+     File.expand_path('../Gemfile', __dir__)
+   end

@@ -1,12 +1,16 @@
+name: 'test'
+workers: 2
 frontend:
-  patch_dir: './build/patches'
-  path: './third_party/django-polls/'
   admin:
     username: 'admin'
     email: 'admin@example.com'
     password: 'PASSWORD'
-  dockerfile: './build/Dockerfile.frontend'
-  image: 'django-poc'
+  check_path: '/up'
+  dockerfile: './build/Dockerfile.ror'
+  patch_dir: './build/patches/ror'
+  path: './third_party/counter-app'
+  type: 'ror'
+  image: 'ror-poc'
   version: '0.0.1'
   size:
     min: 3
